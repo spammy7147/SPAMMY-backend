@@ -64,18 +64,6 @@ public class EsiClient {
                 .body(JsonNode.class);
     }
 
-    /**
-     * ESI POST 요청 처리 (JSON 바디 형식)
-     */
-    public JsonNode postJson(String path, Object body) {
-        return restClient.post()
-                .uri(ESI_BASE + path)
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(body)
-                .retrieve()
-                .body(JsonNode.class);
-    }
-
     private RestClient.RequestHeadersSpec<?> buildRequest(String path, String accessToken) {
         var request = restClient.get().uri(path.startsWith("http") ? path : ESI_BASE + path);
         if (accessToken != null) request = request.header("Authorization", "Bearer " + accessToken);
