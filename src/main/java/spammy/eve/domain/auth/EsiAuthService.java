@@ -146,7 +146,7 @@ public class EsiAuthService {
         body.add("refresh_token", pilot.getRefreshToken());
 
         // ESI 토큰 엔드포인트에 갱신 요청
-        JsonNode response = esiClient.post(TOKEN_URL, body, basicAuth());
+        JsonNode response = esiClient.post(TOKEN_URL, body, basicAuth()).getBody().getFirst();
 
         String newAccessToken = getText(response, "access_token");
         Integer expiresIn = getInt(response, "expires_in");
@@ -183,14 +183,14 @@ public class EsiAuthService {
         body.add("grant_type", "authorization_code");
         body.add("code", code);
 
-        return esiClient.post(TOKEN_URL, body, basicAuth());
+        return esiClient.post(TOKEN_URL, body, basicAuth()).getBody().getFirst();
     }
 
     /**
      * 발급된 Access Token을 검증하여 캐릭터 소유권 정보를 가져옵니다.
      */
     private JsonNode verifyToken(String accessToken) {
-        List<JsonNode> result = esiClient.get(VERIFY_URL, accessToken);
+        List<JsonNode> result = esiClient.get(VERIFY_URL, accessToken).getBody();
         return result.isEmpty() ? null : result.getFirst();
     }
 
@@ -202,7 +202,7 @@ public class EsiAuthService {
                 tools.jackson.databind.node.JsonNodeFactory.instance.objectNode();
         try {
             // 소속 정보 조회
-            List<JsonNode> infoList = esiClient.get("/characters/" + characterId + "/", accessToken);
+            List<JsonNode> infoList = esiClient.get("/characters/" + characterId + "/", accessToken).getBody();
             if (!infoList.isEmpty()) {
                 JsonNode info = infoList.getFirst();
                 Long corporationId = getLong(info, "corporation_id");
@@ -212,7 +212,7 @@ public class EsiAuthService {
             }
 
             // 초상화 URL 조회
-            List<JsonNode> portraitList = esiClient.get("/characters/" + characterId + "/portrait/", null);
+            List<JsonNode> portraitList = esiClient.get("/characters/" + characterId + "/portrait/", null).getBody();
             if (!portraitList.isEmpty()) {
                 JsonNode portrait = portraitList.getFirst();
                 String portraitUrl = getText(portrait, "px128x128");

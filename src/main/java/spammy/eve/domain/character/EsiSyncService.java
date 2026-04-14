@@ -59,8 +59,8 @@ public class EsiSyncService {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void syncCharacterInfo(Character character) {
         log.info("캐릭터 정보 동기화 중...");
-        JsonNode info = esiClient.get("/characters/" + character.getCharacterId() + "/", null).getFirst();
-        JsonNode portrait = esiClient.get("/characters/" + character.getCharacterId() + "/portrait/", null).getFirst();
+        JsonNode info = esiClient.get("/characters/" + character.getCharacterId() + "/", null).getBody().getFirst();
+        JsonNode portrait = esiClient.get("/characters/" + character.getCharacterId() + "/portrait/", null).getBody().getFirst();
 
         if (info.isEmpty() || portrait.isEmpty()) {
             log.warn("캐릭터 정보 조회 실패: {}", character.getCharacterId());
@@ -72,8 +72,8 @@ public class EsiSyncService {
         Long allianceId    = getLong(info, "alliance_id");
         String portraitUrl = getText(portrait, "px128x128");
 
-        String allianceName = getText(esiClient.get("/alliances/" + allianceId, null).getFirst(), "name");
-        String corporationName = getText(esiClient.get("/corporations/" + corporationId, null).getFirst(), "name");
+        String allianceName = getText(esiClient.get("/alliances/" + allianceId, null).getBody().getFirst(), "name");
+        String corporationName = getText(esiClient.get("/corporations/" + corporationId, null).getBody().getFirst(), "name");
 
         character.updateInfo(character.getCharacterName(), corporationId, corporationName, allianceId, allianceName, portraitUrl);
         characterRepository.save(character);
@@ -87,7 +87,7 @@ public class EsiSyncService {
         Set<Long> existing = walletJournalRepository.findJournalIdsByCharacterCharacterId(character.getCharacterId());
         List<WalletJournal> batch = new ArrayList<>();
 
-        for (JsonNode page : esiClient.get("/characters/" + character.getCharacterId() + "/wallet/journal/", token)) {
+        for (JsonNode page : esiClient.get("/characters/" + character.getCharacterId() + "/wallet/journal/", token).getBody()) {
             if (!page.isArray()) continue;
             for (JsonNode node : page) {
                 Long journalId = getLong(node, "id");
@@ -122,7 +122,7 @@ public class EsiSyncService {
         Set<Long> existing = walletTransactionRepository.findTransactionIdsByCharacterCharacterId(character.getCharacterId());
         List<WalletTransaction> batch = new ArrayList<>();
 
-        for (JsonNode page : esiClient.get("/characters/" + character.getCharacterId() + "/wallet/transactions/", token)) {
+        for (JsonNode page : esiClient.get("/characters/" + character.getCharacterId() + "/wallet/transactions/", token).getBody()) {
             if (!page.isArray()) continue;
             for (JsonNode node : page) {
                 Long transactionId = getLong(node, "transaction_id");
@@ -154,7 +154,7 @@ public class EsiSyncService {
         log.info("Contract 동기화 중...");
         List<CharacterContract> newContracts = new ArrayList<>();
 
-        for (JsonNode page : esiClient.get("/characters/" + character.getCharacterId() + "/contracts/", token)) {
+        for (JsonNode page : esiClient.get("/characters/" + character.getCharacterId() + "/contracts/", token).getBody()) {
             if (!page.isArray()) continue;
             for (JsonNode node : page) {
                 Long contractId = getLong(node, "contract_id");
@@ -199,7 +199,7 @@ public class EsiSyncService {
         try {
             List<JsonNode> result = esiClient.get(
                     "/characters/" + character.getCharacterId() +
-                            "/contracts/" + contract.getContractId() + "/items/", token);
+                            "/contracts/" + contract.getContractId() + "/items/", token).getBody();
 
             if (result.isEmpty()) return;
             JsonNode data = result.getFirst();
@@ -229,7 +229,7 @@ public class EsiSyncService {
         log.info("Blueprint 동기화 중...");
         List<CharacterBlueprint> batch = new ArrayList<>();
 
-        for (JsonNode page : esiClient.get("/characters/" + character.getCharacterId() + "/blueprints/", token)) {
+        for (JsonNode page : esiClient.get("/characters/" + character.getCharacterId() + "/blueprints/", token).getBody()) {
             if (!page.isArray()) continue;
             for (JsonNode node : page) {
                 Long itemId = getLong(node, "item_id");
@@ -267,7 +267,7 @@ public class EsiSyncService {
         log.info("IndustryJob 동기화 중...");
         List<IndustryJob> newJobs = new ArrayList<>();
 
-        for (JsonNode page : esiClient.get("/characters/" + character.getCharacterId() + "/industry/jobs/?include_completed=true", token)) {
+        for (JsonNode page : esiClient.get("/characters/" + character.getCharacterId() + "/industry/jobs/?include_completed=true", token).getBody()) {
             if (!page.isArray()) continue;
             for (JsonNode node : page) {
                 Long jobId = getLong(node, "job_id");
@@ -317,7 +317,7 @@ public class EsiSyncService {
         marketOrderRepository.deleteByCharacterCharacterId(character.getCharacterId());
 
         List<MarketOrder> batch = new ArrayList<>();
-        for (JsonNode page : esiClient.get("/characters/" + character.getCharacterId() + "/orders/", token)) {
+        for (JsonNode page : esiClient.get("/characters/" + character.getCharacterId() + "/orders/", token).getBody()) {
             if (!page.isArray()) continue;
             for (JsonNode node : page) {
                 batch.add(MarketOrder.builder()
@@ -352,7 +352,7 @@ public class EsiSyncService {
         assetRepository.deleteByCharacterCharacterId(character.getCharacterId());
 
         List<Asset> batch = new ArrayList<>();
-        for (JsonNode page : esiClient.get("/characters/" + character.getCharacterId() + "/assets/", token)) {
+        for (JsonNode page : esiClient.get("/characters/" + character.getCharacterId() + "/assets/", token).getBody()) {
             if (!page.isArray()) continue;
             for (JsonNode node : page) {
                 batch.add(Asset.builder()
@@ -378,7 +378,7 @@ public class EsiSyncService {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void syncLoyaltyPoints(Character character, String token) {
         log.info("LoyaltyPoint 동기화 중...");
-        List<JsonNode> result = esiClient.get("/characters/" + character.getCharacterId() + "/loyalty/points/", token);
+        List<JsonNode> result = esiClient.get("/characters/" + character.getCharacterId() + "/loyalty/points/", token).getBody();
         if (result.isEmpty()) return;
 
         JsonNode data = result.getFirst();
@@ -409,7 +409,7 @@ public class EsiSyncService {
         log.info("MarketPrice 동기화 중...");
         List<MarketPrice> batch = new ArrayList<>();
 
-        for (JsonNode page : esiClient.get("/markets/prices/", null)) {
+        for (JsonNode page : esiClient.get("/markets/prices/", null).getBody()) {
             if (!page.isArray()) continue;
             for (JsonNode node : page) {
                 Long typeId = getLong(node, "type_id");

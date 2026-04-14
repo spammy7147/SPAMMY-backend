@@ -30,7 +30,7 @@ public class EsiService {
         List<JsonNode> jsonNodes = esiClient.get(
                 "/characters/" + characterId + "/wallet/",
                 token
-        );
+        ).getBody();
         log.info("jsonNode = {}", jsonNodes);
         Double balance = jsonNodes.isEmpty() ? 0.0 : getDouble(jsonNodes.getFirst(), null);
         return balance == null ? 0.0 : balance;
@@ -44,7 +44,7 @@ public class EsiService {
         List<JsonNode> jsonNodes = esiClient.get(
                 "/characters/" + characterId + "/wallet/transactions/",
                 token
-        );
+        ).getBody();
         return jsonNodes.isEmpty() ? null : jsonNodes.getFirst();
     }
 
@@ -56,7 +56,7 @@ public class EsiService {
         List<JsonNode> jsonNodes = esiClient.get(
                 "/characters/" + characterId + "/assets/",
                 token
-        );
+        ).getBody();
         return jsonNodes.isEmpty() ? null : jsonNodes.getFirst();
     }
 
@@ -68,7 +68,7 @@ public class EsiService {
         List<JsonNode> jsonNodes = esiClient.get(
                 "/characters/" + characterId + "/wallet/journal/",
                 token
-        );
+        ).getBody();
         return jsonNodes.isEmpty() ? null : jsonNodes.getFirst();
     }
 

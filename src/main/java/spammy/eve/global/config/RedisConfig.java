@@ -1,13 +1,17 @@
 package spammy.eve.global.config;
 
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.GenericJacksonJsonRedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializer;
+import tools.jackson.databind.DefaultTyping;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
+import tools.jackson.databind.jsontype.PolymorphicTypeValidator;
 
 @Configuration
 public class RedisConfig {
@@ -19,12 +23,19 @@ public class RedisConfig {
         template.setKeySerializer(RedisSerializer.string());
         template.setHashKeySerializer(RedisSerializer.string());
 
+        PolymorphicTypeValidator ptv = BasicPolymorphicTypeValidator.builder()
+                .allowIfBaseType(Object.class)
+                .build();
+
         ObjectMapper mapper = JsonMapper.builder()
                 .findAndAddModules()
+                .activateDefaultTyping(
+                        ptv,
+                        DefaultTyping.NON_FINAL,
+                        JsonTypeInfo.As.PROPERTY)
                 .build();
 
         var jsonSerializer = new GenericJacksonJsonRedisSerializer(mapper);
-
         template.setValueSerializer(jsonSerializer);
         template.setHashValueSerializer(jsonSerializer);
 
