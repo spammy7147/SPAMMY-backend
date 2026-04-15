@@ -11,7 +11,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
 import spammy.eve.client.EsiResponse;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -37,18 +36,21 @@ public class EsiCacheAspect {
                 .findFirst()
                 .orElse("");
 
-        RedisDTO dto = null;
+        Object proceed = null;
         try {
             Object cachedValue = redis.opsForValue().get(path);
             if (cachedValue instanceof RedisDTO) {
-                dto = (RedisDTO) cachedValue;
+                RedisDTO dto = (RedisDTO) cachedValue;
+                if(LocalDateTime.now().isAfter(dto.getExpireAt())) {
+                    proceed = joinPoint.proceed();
+                }
+            }else {
+                proceed = joinPoint.proceed();
             }
         } catch (Exception e) {
             log.warn("ESI 캐시 데이터 읽기 실패 (무시하고 진행): {}", e.getMessage());
+            proceed = joinPoint.proceed();
         }
-
-        Object proceed = joinPoint.proceed();
-
         EsiResponse info = (EsiResponse) proceed;
 
         String lastModified = info.getHeaders().getFirst(HttpHeaders.LAST_MODIFIED);
@@ -60,11 +62,10 @@ public class EsiCacheAspect {
         if (cacheControl != null && cacheControl.contains("max-age=")) {
             maxAge = Long.parseLong(cacheControl.split("max-age=")[1].split(",")[0].trim());
         }
-        LocalDateTime expireAt = ZonedDateTime.parse(lastModified, DateTimeFormatter.RFC_1123_DATE_TIME).toLocalDateTime().plusSeconds(maxAge);
 
         redis.opsForValue().set(path, RedisDTO.builder()
                 .etag(info.getHeaders().getFirst(HttpHeaders.ETAG))
-                .expireAt(expireAt)
+                .expireAt(LocalDateTime.now().plusSeconds(maxAge))
                 .lastModifed(lastModified)
                 .build());
 

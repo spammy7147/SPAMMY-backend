@@ -61,7 +61,6 @@ public class EsiClient {
      */
     @EsiCache
     public EsiResponse post(String path, MultiValueMap<String, String> body, String authHeader) {
-        List<JsonNode> result = new ArrayList<>();
         ResponseEntity<JsonNode> entity = restClient.post()
                 .uri(path)
                 .header(HttpHeaders.AUTHORIZATION, authHeader)
@@ -70,6 +69,7 @@ public class EsiClient {
                 .retrieve()
                 .toEntity(JsonNode.class);
 
+        log.info("path : {}, body : {}",path, entity.getBody());
         return EsiResponse.builder()
                 .headers(entity.getHeaders())
                 .body(List.of(Objects.requireNonNull(entity.getBody())))
