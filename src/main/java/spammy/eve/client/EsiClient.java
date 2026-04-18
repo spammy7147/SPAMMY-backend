@@ -8,10 +8,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClient;
+import spammy.eve.global.aop.EsiCache;
 import tools.jackson.databind.JsonNode;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.IntStream;
 
 @Slf4j
@@ -26,7 +28,8 @@ public class EsiClient {
     /**
      * ESI GET 요청. 각 페이지의 응답 body를 리스트로 반환.
      */
-    public List<JsonNode> get(String path, String accessToken) {
+    @EsiCache
+    public EsiResponse get(String path, String accessToken) {
         List<JsonNode> result = new ArrayList<>();
 
         ResponseEntity<JsonNode> entity = buildRequest(path, accessToken)
@@ -35,7 +38,6 @@ public class EsiClient {
 
         JsonNode body = entity.getBody();
         if (body != null) result.add(body);
-
         String pagesHeader = entity.getHeaders().getFirst("x-pages");
         if (pagesHeader != null) {
             int totalPages = Integer.parseInt(pagesHeader);
@@ -48,32 +50,30 @@ public class EsiClient {
             });
         }
 
-        return result;
+        return EsiResponse.builder()
+                .headers(entity.getHeaders())
+                .body(result)
+                .build();
     }
 
     /**
      * ESI POST 요청 처리 (토큰 갱신 등 FORM 형식)
      */
-    public JsonNode post(String url, MultiValueMap<String, String> body, String authHeader) {
-        return restClient.post()
-                .uri(url)
+    @EsiCache
+    public EsiResponse post(String path, MultiValueMap<String, String> body, String authHeader) {
+        ResponseEntity<JsonNode> entity = restClient.post()
+                .uri(path)
                 .header(HttpHeaders.AUTHORIZATION, authHeader)
                 .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                 .body(body)
                 .retrieve()
-                .body(JsonNode.class);
-    }
+                .toEntity(JsonNode.class);
 
-    /**
-     * ESI POST 요청 처리 (JSON 바디 형식)
-     */
-    public JsonNode postJson(String path, Object body) {
-        return restClient.post()
-                .uri(ESI_BASE + path)
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(body)
-                .retrieve()
-                .body(JsonNode.class);
+        log.info("path : {}, body : {}",path, entity.getBody());
+        return EsiResponse.builder()
+                .headers(entity.getHeaders())
+                .body(List.of(Objects.requireNonNull(entity.getBody())))
+                .build();
     }
 
     private RestClient.RequestHeadersSpec<?> buildRequest(String path, String accessToken) {
