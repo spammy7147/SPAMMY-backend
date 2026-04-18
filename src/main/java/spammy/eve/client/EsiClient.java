@@ -53,6 +53,7 @@ public class EsiClient {
         return EsiResponse.builder()
                 .headers(entity.getHeaders())
                 .body(result)
+                .isModified(true)
                 .build();
     }
 

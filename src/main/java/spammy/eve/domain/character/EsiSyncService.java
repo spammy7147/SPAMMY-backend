@@ -67,7 +67,6 @@ public class EsiSyncService {
             return;
         }
 
-
         Long corporationId = getLong(info, "corporation_id");
         Long allianceId    = getLong(info, "alliance_id");
         String portraitUrl = getText(portrait, "px128x128");

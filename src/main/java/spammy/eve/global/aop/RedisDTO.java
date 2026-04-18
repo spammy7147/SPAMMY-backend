@@ -9,6 +9,6 @@ import java.time.LocalDateTime;
 @Builder
 public class RedisDTO {
     private String etag;
-    private String lastModifed;
+    private String lastModified;
     private LocalDateTime expireAt;
 }

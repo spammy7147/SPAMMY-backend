@@ -13,4 +13,5 @@ import java.util.List;
 public class EsiResponse {
     HttpHeaders headers;
     List<JsonNode> body;
+    Boolean isModified;
 }

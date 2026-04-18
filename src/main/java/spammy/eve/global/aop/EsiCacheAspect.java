@@ -11,9 +11,12 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
 import spammy.eve.client.EsiResponse;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
 import java.util.stream.IntStream;
 
 @Slf4j
@@ -36,39 +39,48 @@ public class EsiCacheAspect {
                 .findFirst()
                 .orElse("");
 
-        Object proceed = null;
+        Object cachedValue = null;
+
         try {
-            Object cachedValue = redis.opsForValue().get(path);
-            if (cachedValue instanceof RedisDTO) {
-                RedisDTO dto = (RedisDTO) cachedValue;
-                if(LocalDateTime.now().isAfter(dto.getExpireAt())) {
-                    proceed = joinPoint.proceed();
-                }
-            }else {
-                proceed = joinPoint.proceed();
-            }
+            cachedValue = redis.opsForValue().get(path);
         } catch (Exception e) {
-            log.warn("ESI 캐시 데이터 읽기 실패 (무시하고 진행): {}", e.getMessage());
-            proceed = joinPoint.proceed();
+            log.warn("ESI 캐시 조회 실패, DB 직접 조회 수행: {}", e.getMessage());
         }
-        EsiResponse info = (EsiResponse) proceed;
+
+        if (cachedValue instanceof RedisDTO) {
+            return EsiResponse.builder()
+                    .isModified(false)
+                    .build();
+        }
+
+        Object result = joinPoint.proceed();
+        EsiResponse info = (EsiResponse) result;
 
         String lastModified = info.getHeaders().getFirst(HttpHeaders.LAST_MODIFIED);
-        if(lastModified == null) {
-            lastModified = ZonedDateTime.now().format(DateTimeFormatter.RFC_1123_DATE_TIME);
-        }
-        long maxAge = 0;
+        long maxAge = 60;
         String cacheControl = info.getHeaders().getCacheControl();
         if (cacheControl != null && cacheControl.contains("max-age=")) {
-            maxAge = Long.parseLong(cacheControl.split("max-age=")[1].split(",")[0].trim());
+            maxAge = Arrays.stream(cacheControl.split(","))
+                     .map(String::trim)
+                     .filter(s -> s.startsWith("max-age="))
+                     .map(s -> s.substring("max-age=".length()))
+                     .mapToLong(s -> {
+                             try { return Long.parseLong(s); }
+                             catch (NumberFormatException e) { return 0L; }
+                         })
+                     .findFirst()
+                     .orElse(0L);
         }
 
-        redis.opsForValue().set(path, RedisDTO.builder()
-                .etag(info.getHeaders().getFirst(HttpHeaders.ETAG))
-                .expireAt(LocalDateTime.now().plusSeconds(maxAge))
-                .lastModifed(lastModified)
-                .build());
+        redis.opsForValue().set(path,
+                                RedisDTO.builder()
+                                .etag(info.getHeaders().getFirst(HttpHeaders.ETAG))
+                                .expireAt(LocalDateTime.now().plusSeconds(maxAge))
+                                .lastModified(lastModified)
+                                .build(),
+                                Duration.ofSeconds(maxAge)
+        );
 
-        return proceed;
+        return info;
     }
 }
