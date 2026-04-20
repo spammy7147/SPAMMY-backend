@@ -14,6 +14,10 @@ import spammy.eve.domain.user.UserRepository;
 import tools.jackson.databind.JsonNode;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Base64;
 import java.util.List;
 
@@ -48,48 +52,42 @@ public class EsiAuthService {
     @Transactional
     public Character handleCallback(String code, Long linkingUserId) {
         // 1. 코드를 Access/Refresh Token으로 교환
-        JsonNode tokenResponse = exchangeCode(code);
+        MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
+        body.add("grant_type", "authorization_code");
+        body.add("code", code);
+
+        JsonNode tokenResponse = esiClient.post(TOKEN_URL, body, basicAuth()).getBody().getFirst();
+
+        log.info("ESI 인증 TOKEN: {}", tokenResponse);
+
         String accessToken = getText(tokenResponse, "access_token");
         String refreshToken = getText(tokenResponse, "refresh_token");
         Integer expiresIn = getInt(tokenResponse, "expires_in");
         if (expiresIn == null) expiresIn = 1200;
+        LocalDateTime expiredAt = LocalDateTime.now().plusSeconds(expiresIn);
 
         // 2. 토큰 검증 및 기본 캐릭터 정보(ID, 이름 등) 획득
-        JsonNode charInfo = verifyToken(accessToken);
+        List<JsonNode> result = esiClient.get(VERIFY_URL, accessToken).getBody();
+        JsonNode charInfo = result.isEmpty() ? null : result.getFirst();
+
         if (charInfo == null) throw new RuntimeException("ESI 토큰 검증 실패 (verifyToken failed)");
 
         Long characterId = getLong(charInfo, "CharacterID");
         String characterName = getText(charInfo, "CharacterName");
-        String scopes = getText(charInfo, "Scopes");
-        String ownerHash = getText(charInfo, "CharacterOwnerHash");
-        Instant expiresAt = Instant.now().plusSeconds(getInt(tokenResponse, "expires_in"));
 
-        // 3. ESI API를 통해 공개 정보(소속, 초상화) 추가 조회
-        JsonNode publicInfo = fetchPublicInfo(characterId, accessToken);
-        Long corporationId = getLong(publicInfo, "corporation_id");
-        Long allianceId = getLong(publicInfo, "alliance_id");
-        String portraitUrl = getText(publicInfo, "portrait");
+        if (characterId == null) throw new RuntimeException("토큰검증실패") ;
 
-        // 4. 캐릭터 엔티티 생성 또는 업데이트
         Character pilot = characterRepository.findById(characterId)
                 .map(existing -> {
-                    existing.updateToken(accessToken, refreshToken, expiresAt, scopes, ownerHash);
-                    existing.updateInfo(characterName, corporationId, existing.getCorporationName(), allianceId, existing.getAllianceName(), portraitUrl);
+                    existing.updateToken(accessToken, refreshToken, expiredAt);
                     return existing;
                 })
                 .orElse(Character.builder()
                         .characterId(characterId)
                         .characterName(characterName)
-                        .ownerHash(ownerHash)
                         .accessToken(accessToken)
                         .refreshToken(refreshToken)
-                        .tokenExpiresAt(expiresAt)
-                        .scopes(scopes)
-                        .corporationId(corporationId)
-                        .corporationName(null)
-                        .allianceId(allianceId)
-                        .allianceName(null)
-                        .portraitUrl(portraitUrl)
+                        .tokenExpiresAt(expiredAt)
                         .build());
 
         // 5. 사용자 그룹(User) 연결 및 병합 로직
@@ -98,7 +96,6 @@ public class EsiAuthService {
             currentUser = userRepository.findById(linkingUserId)
                     .orElseThrow(() -> new IllegalArgumentException("현재 로그인된 User를 찾을 수 없습니다: " + linkingUserId));
 
-            // [병합 로직] 새로 연결하려는 캐릭터가 이미 다른 User 그룹에 속해 있다면 그룹 통합
             if (pilot.getUser() != null && !pilot.getUser().getId().equals(currentUser.getId())) {
                 User oldUser = pilot.getUser();
                 log.info("계정 병합 발생: User {} -> User {}", oldUser.getId(), currentUser.getId());
@@ -118,11 +115,10 @@ public class EsiAuthService {
             if (pilot.getUser() != null) {
                 currentUser = pilot.getUser();
             } else {
-                currentUser = userRepository.save(User.builder().createdAt(Instant.now()).build());
+                currentUser = userRepository.save(User.builder().createdAt(LocalDateTime.now()).build());
                 log.info("새 User 그룹 생성: id={}, character={}", currentUser.getId(), characterName);
             }
         }
-
         pilot.linkToUser(currentUser);
 
         // 현재 그룹에 메인 캐릭터가 하나도 없다면 이 캐릭터를 메인으로 설정
@@ -148,13 +144,15 @@ public class EsiAuthService {
         // ESI 토큰 엔드포인트에 갱신 요청
         JsonNode response = esiClient.post(TOKEN_URL, body, basicAuth()).getBody().getFirst();
 
+        String newReFreshToken = getText(response, "refresh_token");
         String newAccessToken = getText(response, "access_token");
         Integer expiresIn = getInt(response, "expires_in");
         if (expiresIn == null) expiresIn = 1200;
-        Instant newExpiresAt = Instant.now().plusSeconds(expiresIn);
+        LocalDateTime newExpiresAt = LocalDateTime.now().plusSeconds(expiresIn);
+
 
         // 엔티티 정보 업데이트 및 저장
-        pilot.updateAccessToken(newAccessToken, newExpiresAt);
+        pilot.updateAccessToken(newReFreshToken, newAccessToken, newExpiresAt);
         characterRepository.save(pilot);
 
         log.info("토큰 갱신 완료: {}", pilot.getCharacterName());
@@ -175,24 +173,6 @@ public class EsiAuthService {
         return pilot.getAccessToken();
     }
 
-    /**
-     * SSO 인증 코드를 Access/Refresh Token 세트로 교환합니다.
-     */
-    private JsonNode exchangeCode(String code) {
-        MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
-        body.add("grant_type", "authorization_code");
-        body.add("code", code);
-
-        return esiClient.post(TOKEN_URL, body, basicAuth()).getBody().getFirst();
-    }
-
-    /**
-     * 발급된 Access Token을 검증하여 캐릭터 소유권 정보를 가져옵니다.
-     */
-    private JsonNode verifyToken(String accessToken) {
-        List<JsonNode> result = esiClient.get(VERIFY_URL, accessToken).getBody();
-        return result.isEmpty() ? null : result.getFirst();
-    }
 
     /**
      * 캐릭터의 공개 정보(소속 코퍼레이션, 얼라이언스 ID 및 초상화 URL)를 조회합니다.

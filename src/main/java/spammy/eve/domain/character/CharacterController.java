@@ -66,4 +66,7 @@ public class CharacterController {
                 })
                 .orElseThrow(() -> new RuntimeException("로그인 필요"));
     }
+
+    //캐릭터정보 조회
+    
 }
