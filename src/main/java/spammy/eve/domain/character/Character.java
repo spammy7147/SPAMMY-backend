@@ -57,7 +57,7 @@ public class Character {
     private Double balance;
 
     @Column(name = "omega_expires_at")
-    private Instant omegaExpiresAt;
+    private LocalDate omegaExpiresAt;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
@@ -96,7 +96,7 @@ public class Character {
         this.balance = balance;
     }
 
-    public void updateOmegaExpiresAt(Instant omegaExpiresAt) {
+    public void updateOmegaExpiresAt(LocalDate omegaExpiresAt) {
         this.omegaExpiresAt = omegaExpiresAt;
     }
 
