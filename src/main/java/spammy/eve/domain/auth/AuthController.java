@@ -44,15 +44,25 @@ public class AuthController {
     @Value("${spammy.jwt.expiration}")
     private long jwtExpiration;
 
+
+    private ResponseCookie createCookie(String name, String value, long seconds) {
+        return ResponseCookie.from(name, value)
+                .httpOnly(true)       // 1. 자바스크립트 접근 차단 (XSS 방어)
+                .secure(false)        // 2. HTTPS 환경에서만 전송
+                .path("/")            // 3. 모든 경로에서 유효
+                .sameSite("Lax")      // 4. CSRF 방어 (중요)
+                .maxAge(seconds) // 5. 토큰 만료 시간과 일치
+                .build();
+    }
     /**
      * EVE SSO 로그인 프로세스를 시작합니다.
      * 새로운 사용자가 로그인하거나, 기존 사용자가 다시 로그인할 때 사용됩니다.
      */
     @GetMapping("/login")
-    public RedirectView login(HttpSession session) {
+    public RedirectView login(HttpServletResponse response) {
         String state = UUID.randomUUID().toString();
-        session.setAttribute("oauth_state", state);
-        // link_user_id가 없으면 일반 '로그인' 모드로 동작합니다.
+        ResponseCookie cookie = createCookie("oauth_state", state, 60);
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
         return new RedirectView(buildOAuthUrl(state));
     }
 
@@ -61,15 +71,18 @@ public class AuthController {
      * 쿠키에 저장된 현재 사용자의 ID를 세션에 임시 저장하여 콜백 시 식별합니다.
      */
     @GetMapping("/link")
-    public RedirectView link(HttpSession session, HttpServletRequest request) {
-        Long userId = getUserIdFromCookieOrNull(request);
+    public RedirectView link(HttpServletResponse response,
+                             @CookieValue(name = "auth_token", required = false) String authToken) {
+
+        Long userId = jwtService.getUserId(authToken);
         if (userId == null) {
             return new RedirectView(frontendUrl + "/login?error=not_logged_in");
         }
         String state = UUID.randomUUID().toString();
-        session.setAttribute("oauth_state", state);
-        // 세션에 현재 사용자 ID를 저장하여 '연결' 모드임을 표시합니다.
-        session.setAttribute("link_user_id", userId);
+        ResponseCookie oathStateCookie = createCookie("oauth_state", state, 60);
+        ResponseCookie userIdCookie = createCookie("user_id", userId.toString(), 60);
+        response.addHeader(HttpHeaders.SET_COOKIE, oathStateCookie.toString());
+        response.addHeader(HttpHeaders.SET_COOKIE, userIdCookie.toString());
         return new RedirectView(buildOAuthUrl(state));
     }
 
@@ -78,23 +91,26 @@ public class AuthController {
      * 일반 로그인과 캐릭터 추가 연결(Link)을 모두 처리합니다.
      */
     @GetMapping("/callback")
-    public RedirectView callback(@RequestParam String code, @RequestParam String state,
-                                 HttpSession session, HttpServletResponse response) {
+    public RedirectView callback(@RequestParam String code,
+                                 @RequestParam String state,
+                                 @CookieValue(name = "oauth_state", required = false) String savedState,
+                                 @CookieValue(name = "user_id", required = false) Long userId,
+                                 HttpServletResponse response) {
+        
         // CSRF 방지를 위한 state 검증
-        String savedState = (String) session.getAttribute("oauth_state");
         if (!state.equals(savedState)) {
+            /*
+               TODO
+               로그인 오류 페이지 만들기
+             */
             return new RedirectView(frontendUrl + "/login?error=state_mismatch");
         }
 
-        // '연결' 모드인지 확인 후 세션에서 제거
-        Long linkUserId = (Long) session.getAttribute("link_user_id");
-        session.removeAttribute("link_user_id");
-
         try {
             // EsiAuthService에서 실제 토큰 교환 및 사용자/캐릭터 저장/병합 로직을 수행합니다.
-            Character character = esiAuthService.handleCallback(code, linkUserId);
+            Character character = esiAuthService.handleCallback(code, userId);
 
-            if (linkUserId != null) {
+            if (userId != null) {
                 // [캐릭터 연결 모드]: 이미 로그인된 상태이므로 쿠키를 재발급하지 않고 대시보드로 복귀합니다.
                 return new RedirectView(frontendUrl + "/dashboard?linked=" +
                         URLEncoder.encode(character.getCharacterName(), StandardCharsets.UTF_8));

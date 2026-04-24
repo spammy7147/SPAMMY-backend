@@ -5,6 +5,8 @@ import lombok.*;
 import spammy.eve.domain.user.User;
 
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "characters")
@@ -21,9 +23,6 @@ public class Character {
     @Column(name = "character_name", nullable = false)
     private String characterName;
 
-    @Column(name = "owner_hash", nullable = false, length = 128)
-    private String ownerHash;
-
     @Column(name = "access_token", nullable = false, length = 2048)
     private String accessToken;
 
@@ -31,7 +30,7 @@ public class Character {
     private String refreshToken;
 
     @Column(name = "token_expires_at", nullable = false)
-    private Instant tokenExpiresAt;
+    private LocalDateTime tokenExpiresAt;
 
     @Column(name = "corporation_id")
     private Long corporationId;
@@ -52,13 +51,13 @@ public class Character {
     private String scopes;
 
     @Column(name = "last_synced_at")
-    private Instant lastSyncedAt;
+    private LocalDateTime lastSyncedAt;
 
     @Column(name = "balance")
     private Double balance;
 
     @Column(name = "omega_expires_at")
-    private Instant omegaExpiresAt;
+    private LocalDate omegaExpiresAt;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
@@ -69,41 +68,40 @@ public class Character {
     private boolean main = false;
 
     public boolean isTokenExpired() {
-        return Instant.now().isAfter(tokenExpiresAt.minusSeconds(30));
+        return LocalDateTime.now().isAfter(tokenExpiresAt.minusSeconds(30));
     }
 
-    public void updateToken(String accessToken, String refreshToken, Instant tokenExpiresAt, String scopes, String ownerHash) {
+    public void updateToken(String accessToken, String refreshToken, LocalDateTime tokenExpiresAt) {
         this.accessToken = accessToken;
         this.refreshToken = refreshToken;
         this.tokenExpiresAt = tokenExpiresAt;
-        this.scopes = scopes;
-        this.ownerHash = ownerHash;
     }
 
-    public void updateAccessToken(String accessToken, Instant tokenExpiresAt) {
+    public void updateAccessToken(String refreshToken, String accessToken, LocalDateTime tokenExpiresAt) {
+        this.refreshToken = refreshToken;
         this.accessToken = accessToken;
         this.tokenExpiresAt = tokenExpiresAt;
     }
 
-    public void updateInfo(String characterName, Long corporationId, String corporationName, Long allianceId, String allianceName, String portraitUrl) {
-        this.characterName = characterName;
+    public void updateInfo(Long corporationId, Long allianceId) {
         this.corporationId = corporationId;
         this.allianceId = allianceId;
+    }
+
+    public void updatePortrait(String portraitUrl) {
         this.portraitUrl = portraitUrl;
-        this.allianceName = allianceName;
-         this.corporationName = corporationName;
     }
 
     public void updateBalance(Double balance) {
         this.balance = balance;
     }
 
-    public void updateOmegaExpiresAt(Instant omegaExpiresAt) {
+    public void updateOmegaExpiresAt(LocalDate omegaExpiresAt) {
         this.omegaExpiresAt = omegaExpiresAt;
     }
 
     public void updateLastSyncedAt() {
-        this.lastSyncedAt = Instant.now();
+        this.lastSyncedAt = LocalDateTime.now();
     }
 
     public void linkToUser(User user) {
@@ -116,5 +114,10 @@ public class Character {
 
     public void demoteFromMain() {
         this.main = false;
+    }
+
+    public void updateCorpAndAlianceName(String corporationName, String allianceName) {
+        this.corporationName = corporationName;
+        this.allianceName = allianceName;
     }
 }

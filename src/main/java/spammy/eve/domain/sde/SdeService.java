@@ -138,8 +138,8 @@ public class SdeService {
         forEachNode(data, om(), root -> batch.add(Category.builder()
                 .id(getLong(root, "_key"))
                 .iconId(getLong(root, "iconID"))
-                .nameEn(getText(root, "name", "en"))
-                .nameKo(getText(root, "name", "ko"))
+                .nameEn(getString(root, "name", "en"))
+                .nameKo(getString(root, "name", "ko"))
                 .published(!Boolean.FALSE.equals(getBoolean(root, "published")))
                 .build()));
 
@@ -159,8 +159,8 @@ public class SdeService {
             batch.add(Group.builder()
                     .id(getLong(root, "_key"))
                     .category(category)
-                    .nameEn(getText(root, "name", "en"))
-                    .nameKo(getText(root, "name", "ko"))
+                    .nameEn(getString(root, "name", "en"))
+                    .nameKo(getString(root, "name", "ko"))
                     .build());
         });
 
@@ -180,8 +180,8 @@ public class SdeService {
             batch.add(Type.builder()
                     .id(getLong(root, "_key"))
                     .group(group)
-                    .nameEn(getText(root, "name", "en"))
-                    .nameKo(getText(root, "name", "ko"))
+                    .nameEn(getString(root, "name", "en"))
+                    .nameKo(getString(root, "name", "ko"))
                     .published(!Boolean.FALSE.equals(getBoolean(root, "published")))
                     .build());
         });

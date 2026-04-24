@@ -60,14 +60,14 @@ public final class JsonlUtils {
         return (target == null) ? null : target.asInt();
     }
 
-    public static String getText(JsonNode node, String... fields) {
+    public static String getString(JsonNode node, String... fields) {
         JsonNode target = getChildNode(node, fields);
-        return (target == null) ? null : target.asText();
+        return (target == null) ? "" : target.asString();
     }
 
     public static Boolean getBoolean(JsonNode node, String... fields) {
         JsonNode target = getChildNode(node, fields);
-        return (target == null) ? null : target.asBoolean();
+        return target != null && target.asBoolean();
     }
 
     public static Double getDouble(JsonNode node, String... fields) {
