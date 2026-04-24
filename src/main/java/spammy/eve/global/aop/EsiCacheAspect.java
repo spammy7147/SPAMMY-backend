@@ -13,9 +13,6 @@ import spammy.eve.client.EsiResponse;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.stream.IntStream;
 
@@ -49,7 +46,7 @@ public class EsiCacheAspect {
 
         if (cachedValue instanceof RedisDTO) {
             return EsiResponse.builder()
-                    .isModified(false)
+                    .modified(false)
                     .build();
         }
 

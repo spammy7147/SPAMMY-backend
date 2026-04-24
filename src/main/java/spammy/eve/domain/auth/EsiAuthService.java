@@ -13,11 +13,7 @@ import spammy.eve.domain.user.User;
 import spammy.eve.domain.user.UserRepository;
 import tools.jackson.databind.JsonNode;
 
-import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.ZoneOffset;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.Base64;
 import java.util.List;
 
@@ -56,27 +52,24 @@ public class EsiAuthService {
         body.add("grant_type", "authorization_code");
         body.add("code", code);
 
-        JsonNode tokenResponse = esiClient.post(TOKEN_URL, body, basicAuth()).getBody().getFirst();
+        JsonNode tokenResponse = esiClient.post(TOKEN_URL, body, basicAuth()).getBody();
 
         log.info("ESI 인증 TOKEN: {}", tokenResponse);
 
-        String accessToken = getText(tokenResponse, "access_token");
-        String refreshToken = getText(tokenResponse, "refresh_token");
+        String accessToken = getString(tokenResponse, "access_token");
+        String refreshToken = getString(tokenResponse, "refresh_token");
         Integer expiresIn = getInt(tokenResponse, "expires_in");
         if (expiresIn == null) expiresIn = 1200;
         LocalDateTime expiredAt = LocalDateTime.now().plusSeconds(expiresIn);
 
         // 2. 토큰 검증 및 기본 캐릭터 정보(ID, 이름 등) 획득
-        List<JsonNode> result = esiClient.get(VERIFY_URL, accessToken).getBody();
-        JsonNode charInfo = result.isEmpty() ? null : result.getFirst();
-
+        JsonNode charInfo = esiClient.get(VERIFY_URL, accessToken).getBody();
         if (charInfo == null) throw new RuntimeException("ESI 토큰 검증 실패 (verifyToken failed)");
 
         Long characterId = getLong(charInfo, "CharacterID");
-        String characterName = getText(charInfo, "CharacterName");
+        String characterName = getString(charInfo, "CharacterName");
 
         if (characterId == null) throw new RuntimeException("토큰검증실패") ;
-
         Character pilot = characterRepository.findById(characterId)
                 .map(existing -> {
                     existing.updateToken(accessToken, refreshToken, expiredAt);
@@ -90,7 +83,6 @@ public class EsiAuthService {
                         .tokenExpiresAt(expiredAt)
                         .build());
 
-        // 5. 사용자 그룹(User) 연결 및 병합 로직
         User currentUser = null;
         if (linkingUserId != null) {
             currentUser = userRepository.findById(linkingUserId)
@@ -141,17 +133,14 @@ public class EsiAuthService {
         body.add("grant_type", "refresh_token");
         body.add("refresh_token", pilot.getRefreshToken());
 
-        // ESI 토큰 엔드포인트에 갱신 요청
-        JsonNode response = esiClient.post(TOKEN_URL, body, basicAuth()).getBody().getFirst();
+        JsonNode response = esiClient.post(TOKEN_URL, body, basicAuth()).getBody();
 
-        String newReFreshToken = getText(response, "refresh_token");
-        String newAccessToken = getText(response, "access_token");
+        String newReFreshToken = getString(response, "refresh_token");
+        String newAccessToken = getString(response, "access_token");
         Integer expiresIn = getInt(response, "expires_in");
         if (expiresIn == null) expiresIn = 1200;
         LocalDateTime newExpiresAt = LocalDateTime.now().plusSeconds(expiresIn);
 
-
-        // 엔티티 정보 업데이트 및 저장
         pilot.updateAccessToken(newReFreshToken, newAccessToken, newExpiresAt);
         characterRepository.save(pilot);
 
@@ -171,39 +160,6 @@ public class EsiAuthService {
             return refreshAccessToken(pilot);
         }
         return pilot.getAccessToken();
-    }
-
-
-    /**
-     * 캐릭터의 공개 정보(소속 코퍼레이션, 얼라이언스 ID 및 초상화 URL)를 조회합니다.
-     */
-    private JsonNode fetchPublicInfo(Long characterId, String accessToken) {
-        tools.jackson.databind.node.ObjectNode result =
-                tools.jackson.databind.node.JsonNodeFactory.instance.objectNode();
-        try {
-            // 소속 정보 조회
-            List<JsonNode> infoList = esiClient.get("/characters/" + characterId + "/", accessToken).getBody();
-            if (!infoList.isEmpty()) {
-                JsonNode info = infoList.getFirst();
-                Long corporationId = getLong(info, "corporation_id");
-                Long allianceId    = getLong(info, "alliance_id");
-                if (corporationId != null) result.put("corporation_id", corporationId);
-                if (allianceId != null)    result.put("alliance_id", allianceId);
-            }
-
-            // 초상화 URL 조회
-            List<JsonNode> portraitList = esiClient.get("/characters/" + characterId + "/portrait/", null).getBody();
-            if (!portraitList.isEmpty()) {
-                JsonNode portrait = portraitList.getFirst();
-                String portraitUrl = getText(portrait, "px128x128");
-                if (portraitUrl != null) {
-                    result.put("portrait", portraitUrl);
-                }
-            }
-        } catch (Exception e) {
-            log.warn("캐릭터 공개정보 조회 실패 (characterId: {}): {}", characterId, e.getMessage());
-        }
-        return result;
     }
 
     /**

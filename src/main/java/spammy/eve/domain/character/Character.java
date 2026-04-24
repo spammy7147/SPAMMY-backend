@@ -83,13 +83,13 @@ public class Character {
         this.tokenExpiresAt = tokenExpiresAt;
     }
 
-    public void updateInfo(String characterName, Long corporationId, String corporationName, Long allianceId, String allianceName, String portraitUrl) {
-        this.characterName = characterName;
+    public void updateInfo(Long corporationId, Long allianceId) {
         this.corporationId = corporationId;
         this.allianceId = allianceId;
+    }
+
+    public void updatePortrait(String portraitUrl) {
         this.portraitUrl = portraitUrl;
-        this.allianceName = allianceName;
-         this.corporationName = corporationName;
     }
 
     public void updateBalance(Double balance) {
@@ -114,5 +114,10 @@ public class Character {
 
     public void demoteFromMain() {
         this.main = false;
+    }
+
+    public void updateCorpAndAlianceName(String corporationName, String allianceName) {
+        this.corporationName = corporationName;
+        this.allianceName = allianceName;
     }
 }

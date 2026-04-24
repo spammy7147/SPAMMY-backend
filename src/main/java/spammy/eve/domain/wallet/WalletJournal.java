@@ -5,6 +5,7 @@ import lombok.*;
 import spammy.eve.domain.character.Character;
 
 import java.time.Instant;
+import java.time.OffsetDateTime;
 
 @Entity
 @Table(
@@ -30,7 +31,7 @@ public class WalletJournal {
     private Character character;
 
     @Column(name = "date", nullable = false)
-    private Instant date;
+    private OffsetDateTime date;
 
     @Column(name = "ref_type", nullable = false, length = 100)
     private String refType; // bounty_prizes, brokers_fee 등

@@ -10,10 +10,11 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClient;
 import spammy.eve.global.aop.EsiCache;
 import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ArrayNode;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.stream.IntStream;
 
 @Slf4j
@@ -30,6 +31,10 @@ public class EsiClient {
      */
     @EsiCache
     public EsiResponse get(String path, String accessToken) {
+        /**
+         * etag 보내서 modified 되었는지 확인..
+         * 로그인시에는 어떻게?
+         */
         List<JsonNode> result = new ArrayList<>();
 
         ResponseEntity<JsonNode> entity = buildRequest(path, accessToken)
@@ -50,10 +55,21 @@ public class EsiClient {
             });
         }
 
+        ObjectMapper mapper = new ObjectMapper();
+        ArrayNode combinedNode = mapper.createArrayNode();
+
+        for (JsonNode page : result) {
+            if (page.isArray()) {
+                combinedNode.addAll((ArrayNode) page);
+            } else {
+                combinedNode.add(page);
+            }
+        }
+
         return EsiResponse.builder()
                 .headers(entity.getHeaders())
-                .body(result)
-                .isModified(true)
+                .body(combinedNode)
+                .modified(true)
                 .build();
     }
 
@@ -73,7 +89,7 @@ public class EsiClient {
         log.info("path : {}, body : {}",path, entity.getBody());
         return EsiResponse.builder()
                 .headers(entity.getHeaders())
-                .body(List.of(Objects.requireNonNull(entity.getBody())))
+                .body(entity.getBody())
                 .build();
     }
 

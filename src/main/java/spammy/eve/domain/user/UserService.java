@@ -4,7 +4,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import spammy.eve.domain.character.Character;
 import spammy.eve.domain.character.CharacterRepository;
-import spammy.eve.domain.character.CharaterService;
 
 @Service
 @RequiredArgsConstructor
