@@ -33,10 +33,7 @@ public class CharacterService {
         esiSyncService.syncMarketOrders(character, character.getAccessToken());
         esiSyncService.syncAssets(character, character.getAccessToken());
         esiSyncService.syncLoyaltyPoints(character, character.getAccessToken());
-
         character.updateLastSyncedAt();
-
-
 
         log.info("ESI 동기화 완료 - {}", character.getCharacterName());
     }
