@@ -34,6 +34,7 @@ public class EveOAuth2UserService extends DefaultOAuth2UserService {
 
     private final CharacterRepository characterRepository;
     private final UserRepository userRepository;
+    private final JwtService jwtService;
 
     @Override
     @Transactional
@@ -70,8 +71,8 @@ public class EveOAuth2UserService extends DefaultOAuth2UserService {
                         .tokenExpiresAt(expiredAt)
                         .build());
 
-        // 5. '캐릭터 연동(Link)' 모드인지 확인합니다. (쿠키에 user_id가 있는 경우)
-        Long linkingUserId = getLinkingUserIdFromCookie();
+        // 5. '캐릭터 연동(Link)' 모드인지 확인합니다. (로그인된 상태에서 auth_token 쿠키가 있는 경우)
+        Long linkingUserId = getUserIdFromAuthToken();
         User currentUser = null;
 
         if (linkingUserId != null) {
@@ -98,7 +99,7 @@ public class EveOAuth2UserService extends DefaultOAuth2UserService {
             if (pilot.getUser() != null) {
                 currentUser = pilot.getUser();
             } else {
-                currentUser = userRepository.save(User.builder().createdAt(LocalDateTime.now()).build());
+                currentUser = userRepository.save(User.builder().build());
                 log.info("새로운 유저 그룹 생성: id={}, 대표캐릭터={}", currentUser.getId(), characterName);
             }
         }
@@ -116,9 +117,9 @@ public class EveOAuth2UserService extends DefaultOAuth2UserService {
     }
 
     /**
-     * 캐릭터 연동(Link) 요청 시 쿠키에 저장된 user_id를 읽어옵니다.
+     * 캐릭터 연동(Link)을 위해 현재 로그인된 유저의 ID를 auth_token 쿠키에서 추출합니다.
      */
-    private Long getLinkingUserIdFromCookie() {
+    private Long getUserIdFromAuthToken() {
         ServletRequestAttributes attr = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
         if (attr == null) return null;
         HttpServletRequest request = attr.getRequest();
@@ -126,10 +127,17 @@ public class EveOAuth2UserService extends DefaultOAuth2UserService {
         if (cookies == null) return null;
 
         return Arrays.stream(cookies)
-                .filter(c -> "user_id".equals(c.getName()))
+                .filter(c -> "auth_token".equals(c.getName()))
                 .map(Cookie::getValue)
                 .filter(v -> !v.isEmpty())
-                .map(Long::parseLong)
+                .map(token -> {
+                    try {
+                        return jwtService.getUserId(token);
+                    } catch (Exception e) {
+                        log.warn("auth_token 파싱 실패: {}", e.getMessage());
+                        return null;
+                    }
+                })
                 .findFirst()
                 .orElse(null);
     }
