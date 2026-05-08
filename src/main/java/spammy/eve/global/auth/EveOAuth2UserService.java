@@ -14,8 +14,8 @@ import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 import spammy.eve.character.domain.Character;
 import spammy.eve.character.repository.CharacterRepository;
-import spammy.eve.user.User;
-import spammy.eve.user.UserRepository;
+import spammy.eve.character.domain.User;
+import spammy.eve.character.repository.UserRepository;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
