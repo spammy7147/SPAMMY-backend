@@ -1,11 +1,10 @@
-package spammy.eve.user;
+package spammy.eve.character.domain;
 
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.BatchSize;
-import spammy.eve.character.domain.Character;
+import spammy.eve.global.domain.BaseEntity;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -15,14 +14,11 @@ import java.util.List;
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
-public class User {
+public class User extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    @Column(nullable = false)
-    private LocalDateTime createdAt;
 
     @OneToMany(mappedBy = "user", fetch = FetchType.LAZY)
     @BatchSize(size = 20)

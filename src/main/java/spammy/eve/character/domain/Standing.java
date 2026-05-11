@@ -5,24 +5,23 @@ import lombok.*;
 import spammy.eve.global.domain.BaseEntity;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
 
 @Entity
 @Table(
-    name = "loyalty_point",
+    name = "standing",
     uniqueConstraints = @UniqueConstraint(
-        name = "uq_lp_character_corporation",
-        columnNames = {"character_id", "corporation_id"}
+        name = "uq_standing_character_from",
+        columnNames = {"character_id", "from_id", "from_type"}
     ),
     indexes = {
-        @Index(name = "idx_lp_character_id", columnList = "character_id")
+        @Index(name = "idx_standing_character_id", columnList = "character_id")
     }
 )
 @Getter
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
-public class LoyaltyPoint extends BaseEntity {
+public class Standing extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -32,13 +31,16 @@ public class LoyaltyPoint extends BaseEntity {
     @JoinColumn(name = "character_id", nullable = false, foreignKey = @ForeignKey(ConstraintMode.NO_CONSTRAINT))
     private Character character;
 
-    @Column(name = "corporation_id", nullable = false)
-    private Long corporationId; // LP를 준 NPC 코퍼레이션
+    @Column(name = "from_id", nullable = false)
+    private Long fromId;
 
-    @Column(name = "loyalty_points", nullable = false)
-    private Integer loyaltyPoints;
+    @Column(name = "from_type", nullable = false, length = 50)
+    private String fromType; // agent, npc_corp, faction
 
-    public void update(Integer loyaltyPoints) {
-        this.loyaltyPoints = loyaltyPoints;
+    @Column(name = "standing_value", nullable = false)
+    private Double standingValue;
+
+    public void update(Double standingValue) {
+        this.standingValue = standingValue;
     }
 }

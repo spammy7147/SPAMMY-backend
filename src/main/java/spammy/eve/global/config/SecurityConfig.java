@@ -43,10 +43,13 @@ public class SecurityConfig {
                 return config;
             }))
             .authorizeHttpRequests(auth -> auth
-                    .requestMatchers( "/oauth2/**").permitAll()
+                    .requestMatchers("/login/oauth2/code/eve", "/oauth2/authorization/eve", "/api/auth/me", "/error").permitAll()
                     .anyRequest().authenticated()
             )
             .oauth2Login(oauth2 -> oauth2
+                    .redirectionEndpoint(redirection -> redirection
+                            .baseUri("/login/oauth2/code/*")
+                    )
                     .userInfoEndpoint(userInfo -> userInfo.userService(eveOAuth2UserService))
                     .successHandler(eveOauthSuccessHandler)
             )
@@ -55,7 +58,7 @@ public class SecurityConfig {
                     .frameOptions(HeadersConfigurer.FrameOptionsConfig::deny)
             )
             .sessionManagement(session -> session
-                    .sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+                    .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED));
         return http.build();
     }
 }

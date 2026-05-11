@@ -2,6 +2,7 @@ package spammy.eve.character.domain;
 
 import jakarta.persistence.*;
 import lombok.*;
+import spammy.eve.global.domain.BaseEntity;
 
 import java.time.Instant;
 
@@ -18,7 +19,7 @@ import java.time.Instant;
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
-public class CharacterContract {
+public class CharacterContract extends BaseEntity {
 
     @Id
     @Column(name = "contract_id")

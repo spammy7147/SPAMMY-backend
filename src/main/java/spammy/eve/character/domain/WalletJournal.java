@@ -2,6 +2,7 @@ package spammy.eve.character.domain;
 
 import jakarta.persistence.*;
 import lombok.*;
+import spammy.eve.global.domain.BaseEntity;
 
 import java.time.OffsetDateTime;
 
@@ -18,7 +19,7 @@ import java.time.OffsetDateTime;
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
-public class WalletJournal {
+public class WalletJournal extends BaseEntity {
 
     @Id
     @Column(name = "journal_id")

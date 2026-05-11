@@ -2,6 +2,7 @@ package spammy.eve.character.domain;
 
 import jakarta.persistence.*;
 import lombok.*;
+import spammy.eve.global.domain.BaseEntity;
 
 import java.time.Instant;
 
@@ -18,7 +19,7 @@ import java.time.Instant;
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
-public class MarketOrder {
+public class MarketOrder extends BaseEntity {
 
     @Id
     @Column(name = "order_id")
@@ -67,7 +68,18 @@ public class MarketOrder {
     @Column(name = "is_corporation", nullable = false)
     private Boolean isCorporation;
 
+    @Column(name = "state", length = 20)
+    private String state; // active, cancelled, expired, filled
+
+    @Column(name = "completed_at")
+    private Instant completedAt;
+
     public void updateVolume(Integer volumeRemain) {
         this.volumeRemain = volumeRemain;
+    }
+
+    public void updateState(String state, Instant completedAt) {
+        this.state = state;
+        this.completedAt = completedAt;
     }
 }
