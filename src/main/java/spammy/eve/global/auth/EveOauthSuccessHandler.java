@@ -33,6 +33,8 @@ public class EveOauthSuccessHandler extends SimpleUrlAuthenticationSuccessHandle
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
                                         Authentication authentication) throws IOException {
+        log.info("EVE SSO 인증 성공 핸들러 시작: {}", authentication.getName());
+
         // 1. 커스텀 OAuth2User에서 userId 추출
         if (!(authentication.getPrincipal() instanceof CustomOAuth2User oAuth2User)) {
             log.error("Authentication principal is not CustomOAuth2User: {}", authentication.getPrincipal().getClass());
@@ -41,6 +43,7 @@ public class EveOauthSuccessHandler extends SimpleUrlAuthenticationSuccessHandle
         }
 
         Long userId = oAuth2User.getUserId();
+        log.info("인증된 사용자 userId: {}, characterName: {}", userId, oAuth2User.getName());
 
         // 2. userId가 null인 경우 예외 처리
         if (userId == null) {
@@ -51,6 +54,7 @@ public class EveOauthSuccessHandler extends SimpleUrlAuthenticationSuccessHandle
 
         // 3. userId 기반 JWT 생성
         String accessToken = tokenProvider.generateToken(userId);
+        log.debug("JWT 생성 완료: userId={}", userId);
 
         // 4. JWT를 쿠키에 담기
         Cookie cookie = new Cookie("auth_token", accessToken);
@@ -61,7 +65,8 @@ public class EveOauthSuccessHandler extends SimpleUrlAuthenticationSuccessHandle
         response.addCookie(cookie);
 
         // 5. 프론트엔드 메인 페이지로 리다이렉트
-        log.info("User {} (character: {}) login success", userId, oAuth2User.getName());
-        getRedirectStrategy().sendRedirect(request, response, frontendUrl + "/");
+        String targetUrl = frontendUrl + "/";
+        log.info("로그인 최종 성공. 리다이렉트 대상: {}", targetUrl);
+        getRedirectStrategy().sendRedirect(request, response, targetUrl);
     }
 }

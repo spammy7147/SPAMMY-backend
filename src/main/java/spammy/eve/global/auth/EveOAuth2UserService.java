@@ -34,14 +34,24 @@ public class EveOAuth2UserService extends DefaultOAuth2UserService {
 
     private final CharacterRepository characterRepository;
     private final UserRepository userRepository;
-    private final JwtService jwtService;
+    private final JwtTokenProvider jwtTokenProvider;
 
     @Override
     @Transactional
     public OAuth2User loadUser(OAuth2UserRequest userRequest) throws OAuth2AuthenticationException {
+        log.info("EVE SSO loadUser 시작: clientName={}", userRequest.getClientRegistration().getClientName());
+
         // 1. 기본 설정을 통해 EVE SSO로부터 유저 정보(verify 정보)를 가져옵니다.
-        OAuth2User oAuth2User = super.loadUser(userRequest);
+        OAuth2User oAuth2User;
+        try {
+            oAuth2User = super.loadUser(userRequest);
+        } catch (Exception e) {
+            log.error("EVE SSO super.loadUser 실패: {}", e.getMessage(), e);
+            throw e;
+        }
+
         Map<String, Object> attributes = oAuth2User.getAttributes();
+        log.debug("EVE SSO Attributes: {}", attributes);
 
         // 2. EVE SSO 응답값에서 캐릭터 ID와 이름을 추출합니다.
         Long characterId = Long.valueOf(attributes.get("CharacterID").toString());
@@ -54,28 +64,34 @@ public class EveOAuth2UserService extends DefaultOAuth2UserService {
         assert userRequest.getAccessToken().getExpiresAt() != null;
         LocalDateTime expiredAt = LocalDateTime.ofInstant(userRequest.getAccessToken().getExpiresAt(), ZoneId.systemDefault());
 
-        log.info("EVE SSO 로그인 시도: characterId={}, characterName={}", characterId, characterName);
+        log.info("EVE SSO 로그인 정보 추출 완료: characterId={}, characterName={}, hasRefreshToken={}",
+                characterId, characterName, refreshToken != null);
 
         // 4. 기존에 등록된 캐릭터인지 확인하고 토큰 정보를 갱신하거나 새로 생성합니다.
         Character pilot = characterRepository.findById(characterId)
                 .map(existing -> {
+                    log.info("기존 캐릭터 정보 업데이트: {}", characterName);
                     String rt = refreshToken != null ? refreshToken : existing.getRefreshToken();
                     existing.updateToken(accessToken, rt, expiredAt);
                     return existing;
                 })
-                .orElse(Character.builder()
-                        .characterId(characterId)
-                        .characterName(characterName)
-                        .accessToken(accessToken)
-                        .refreshToken(refreshToken != null ? refreshToken : "")
-                        .tokenExpiresAt(expiredAt)
-                        .build());
+                .orElseGet(() -> {
+                    log.info("신규 캐릭터 등록: {}", characterName);
+                    return Character.builder()
+                            .characterId(characterId)
+                            .characterName(characterName)
+                            .accessToken(accessToken)
+                            .refreshToken(refreshToken != null ? refreshToken : "")
+                            .tokenExpiresAt(expiredAt)
+                            .build();
+                });
 
         // 5. '캐릭터 연동(Link)' 모드인지 확인합니다. (로그인된 상태에서 auth_token 쿠키가 있는 경우)
         Long linkingUserId = getUserIdFromAuthToken();
         User currentUser = null;
 
         if (linkingUserId != null) {
+            log.info("캐릭터 연동 모드 감지: linkingUserId={}", linkingUserId);
             // 현재 로그인된 유저가 새 캐릭터를 추가하려는 경우
             currentUser = userRepository.findById(linkingUserId).orElse(null);
 
@@ -98,19 +114,23 @@ public class EveOAuth2UserService extends DefaultOAuth2UserService {
         if (currentUser == null) {
             if (pilot.getUser() != null) {
                 currentUser = pilot.getUser();
+                log.info("기존 유저 그룹 사용: userId={}", currentUser.getId());
             } else {
                 currentUser = userRepository.save(User.builder().build());
-                log.info("새로운 유저 그룹 생성: id={}, 대표캐릭터={}", currentUser.getId(), characterName);
+                log.info("새로운 유저 그룹 생성: userId={}, 대표캐릭터={}", currentUser.getId(), characterName);
             }
         }
         pilot.linkToUser(currentUser);
 
         // 7. 유저 그룹에 메인 캐릭터가 없다면 현재 캐릭터를 메인으로 설정합니다.
         if (!characterRepository.existsByUserAndMainTrue(currentUser)) {
+            log.info("메인 캐릭터 설정: {}", characterName);
             pilot.setAsMain();
         }
 
         characterRepository.save(pilot);
+
+        log.info("EVE SSO loadUser 완료: characterName={}, userId={}", characterName, currentUser.getId());
 
         // 8. 우리 서비스의 내부 userId를 포함한 CustomOAuth2User를 반환합니다.
         return new CustomOAuth2User(currentUser.getId(), attributes, oAuth2User.getAuthorities(), characterName);
@@ -132,7 +152,7 @@ public class EveOAuth2UserService extends DefaultOAuth2UserService {
                 .filter(v -> !v.isEmpty())
                 .map(token -> {
                     try {
-                        return jwtService.getUserId(token);
+                        return jwtTokenProvider.getUserId(token);
                     } catch (Exception e) {
                         log.warn("auth_token 파싱 실패: {}", e.getMessage());
                         return null;

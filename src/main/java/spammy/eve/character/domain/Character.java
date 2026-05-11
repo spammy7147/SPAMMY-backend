@@ -2,9 +2,9 @@ package spammy.eve.character.domain;
 
 import jakarta.persistence.*;
 import lombok.*;
-import spammy.eve.user.User;
+import spammy.eve.global.auth.TokenEncryptionConverter;
+import spammy.eve.global.domain.BaseEntity;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
-public class Character {
+public class Character extends BaseEntity {
 
     @Id
     @Column(name = "character_id")
@@ -23,9 +23,11 @@ public class Character {
     private String characterName;
 
     @Column(name = "access_token", nullable = false, length = 2048)
+    @Convert(converter = TokenEncryptionConverter.class)
     private String accessToken;
 
     @Column(name = "refresh_token", nullable = false, length = 2048)
+    @Convert(converter = TokenEncryptionConverter.class)
     private String refreshToken;
 
     @Column(name = "token_expires_at", nullable = false)
@@ -56,7 +58,7 @@ public class Character {
     private Double balance;
 
     @Column(name = "omega_expires_at")
-    private LocalDate omegaExpiresAt;
+    private LocalDateTime omegaExpiresAt;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
@@ -95,7 +97,7 @@ public class Character {
         this.balance = balance;
     }
 
-    public void updateOmegaExpiresAt(LocalDate omegaExpiresAt) {
+    public void updateOmegaExpiresAt(LocalDateTime omegaExpiresAt) {
         this.omegaExpiresAt = omegaExpiresAt;
     }
 
@@ -115,7 +117,7 @@ public class Character {
         this.main = false;
     }
 
-    public void updateCorpAndAlianceName(String corporationName, String allianceName) {
+    public void updateCorpAndAllianceName(String corporationName, String allianceName) {
         this.corporationName = corporationName;
         this.allianceName = allianceName;
     }

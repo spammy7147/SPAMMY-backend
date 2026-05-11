@@ -7,8 +7,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import spammy.eve.character.domain.Character;
 import spammy.eve.character.service.CharacterService;
-import spammy.eve.user.UserService;
-import spammy.eve.global.auth.JwtService;
+import spammy.eve.character.service.UserService;
+import spammy.eve.global.auth.JwtTokenProvider;
 
 import java.util.Map;
 
@@ -18,8 +18,8 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class CharacterController {
     private final CharacterService characterService;
-    private final JwtService jwtService;
     private final UserService userService;
+    private final JwtTokenProvider jwtTokenProvider;
 
     /**
      * 캐릭터의 오메가 만료 시간을 수동으로 업데이트합니다.
@@ -30,9 +30,9 @@ public class CharacterController {
                                         @RequestBody Map<String, String> body,
                                          @CookieValue(name = "auth_token", required = false) String authToken) {
 
-        Character character = userService.check(characterId, jwtService.getUserId(authToken));
+        Character character = userService.check(characterId, jwtTokenProvider.getUserId(authToken));
 
-        characterService.extendOmega(body, character);
+        characterService.setOmega(body, character);
         return ResponseEntity.ok().build();
     }
 
@@ -43,7 +43,7 @@ public class CharacterController {
     public ResponseEntity<?> getCharacterInfo(@PathVariable Long characterId,
                                               @CookieValue(name = "auth_token", required = false) String authToken) {
 
-        spammy.eve.character.domain.Character character = userService.check(characterId, jwtService.getUserId(authToken));
+        Character character = userService.check(characterId, jwtTokenProvider.getUserId(authToken));
         characterService.syncAll(character);
 
 

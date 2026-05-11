@@ -2,6 +2,7 @@ package spammy.eve.character.domain;
 
 import jakarta.persistence.*;
 import lombok.*;
+import spammy.eve.global.domain.BaseEntity;
 
 @Entity
 @Table(
@@ -15,7 +16,7 @@ import lombok.*;
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
-public class ContractItem {
+public class ContractItem extends BaseEntity {
 
     @Id
     @Column(name = "record_id")

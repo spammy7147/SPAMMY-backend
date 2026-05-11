@@ -7,9 +7,8 @@ import org.springframework.transaction.annotation.Transactional;
 import spammy.eve.character.domain.Character;
 import spammy.eve.character.repository.CharacterRepository;
 import spammy.eve.client.EsiClient;
-import spammy.eve.auth.EsiAuthService;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Map;
 
 @Slf4j
@@ -19,11 +18,10 @@ public class CharacterService {
 
     private final EsiClient esiClient;
     private final CharacterRepository characterRepository;
-    private final EsiAuthService esiAuthService;
     private final EsiSyncService esiSyncService;
 
     @Transactional
-    public void syncAll(spammy.eve.character.domain.Character character) {
+    public void syncAll(Character character) {
         // 잔액 정보 업데이트
         esiSyncService.syncCharacterInfo(character);
         esiSyncService.syncMarketPrices();
@@ -35,17 +33,18 @@ public class CharacterService {
         esiSyncService.syncMarketOrders(character, character.getAccessToken());
         esiSyncService.syncAssets(character, character.getAccessToken());
         esiSyncService.syncLoyaltyPoints(character, character.getAccessToken());
+        esiSyncService.syncStandings(character, character.getAccessToken());
         character.updateLastSyncedAt();
 
         log.info("ESI 동기화 완료 - {}", character.getCharacterName());
     }
 
-    public void extendOmega(Map<String, String> body, Character character) {
+    public void setOmega(Map<String, String> body, Character character) {
         String dateStr = body.get("omegaExpiresAt");
         if (dateStr == null) {
             character.updateOmegaExpiresAt(null);
         } else {
-            character.updateOmegaExpiresAt(LocalDate.parse(dateStr));
+            character.updateOmegaExpiresAt(LocalDateTime.parse(dateStr));
         }
         characterRepository.save(character);
     }

@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 import javax.crypto.Cipher;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.Base64;
 
 @Converter
@@ -18,7 +19,14 @@ public class TokenEncryptionConverter implements AttributeConverter<String, Stri
     private final SecretKeySpec keySpec;
 
     public TokenEncryptionConverter(@Value("${spammy.encryption.key}") String secretKey) {
-        this.keySpec = new SecretKeySpec(secretKey.getBytes(StandardCharsets.UTF_8), ALGORITHM);
+        try {
+            // 입력받은 비밀키의 길이에 관계없이 SHA-256 해시를 사용하여 32바이트(256비트) AES 키 생성
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] keyBytes = digest.digest(secretKey.getBytes(StandardCharsets.UTF_8));
+            this.keySpec = new SecretKeySpec(keyBytes, ALGORITHM);
+        } catch (Exception e) {
+            throw new RuntimeException("암호화 키 초기화 실패", e);
+        }
     }
 
     @Override

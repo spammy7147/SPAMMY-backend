@@ -3,6 +3,7 @@ package spammy.eve.client;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
@@ -23,27 +24,37 @@ import java.util.stream.IntStream;
 public class EsiClient {
 
     private final RestClient restClient;
+    private final ObjectMapper objectMapper;
 
     private static final String ESI_BASE = "https://esi.evetech.net/latest";
 
     /**
-     * ESI GET 요청. 각 페이지의 응답 body를 리스트로 반환.
+     * ESI GET 요청. Aspect에서 주입한 ETag와 함께 ESI를 호출함.
      */
     @EsiCache
-    public EsiResponse get(String path, String accessToken) {
-        /**
-         * etag 보내서 modified 되었는지 확인..
-         * 로그인시에는 어떻게?
-         */
-        List<JsonNode> result = new ArrayList<>();
-
+    public EsiResponse get(String path, String accessToken, String etag) {
         ResponseEntity<JsonNode> entity = buildRequest(path, accessToken)
+                .header(HttpHeaders.IF_NONE_MATCH, etag)
                 .retrieve()
+                .onStatus(status -> status.value() == 304, (req, res) -> { /* 304 Not Modified */ })
                 .toEntity(JsonNode.class);
 
-        JsonNode body = entity.getBody();
-        if (body != null) result.add(body);
-        String pagesHeader = entity.getHeaders().getFirst("x-pages");
+        JsonNode body = (entity.getStatusCode() == HttpStatus.OK) 
+                ? processPagination(path, accessToken, entity) 
+                : null;
+
+        return EsiResponse.builder()
+                .headers(entity.getHeaders())
+                .body(body)
+                .modified(entity.getStatusCode() == HttpStatus.OK)
+                .build();
+    }
+
+    private JsonNode processPagination(String path, String accessToken, ResponseEntity<JsonNode> firstPage) {
+        List<JsonNode> result = new ArrayList<>();
+        if (firstPage.getBody() != null) result.add(firstPage.getBody());
+
+        String pagesHeader = firstPage.getHeaders().getFirst("x-pages");
         if (pagesHeader != null) {
             int totalPages = Integer.parseInt(pagesHeader);
             String separator = path.contains("?") ? "&" : "?";
@@ -55,41 +66,43 @@ public class EsiClient {
             });
         }
 
-        ObjectMapper mapper = new ObjectMapper();
-        ArrayNode combinedNode = mapper.createArrayNode();
+        if (result.size() == 1) return result.getFirst();
 
+        ArrayNode combinedNode = objectMapper.createArrayNode();
         for (JsonNode page : result) {
-            if (page.isArray()) {
-                combinedNode.addAll((ArrayNode) page);
-            } else {
-                combinedNode.add(page);
-            }
+            if (page.isArray()) combinedNode.addAll((ArrayNode) page);
+            else combinedNode.add(page);
         }
-
-        return EsiResponse.builder()
-                .headers(entity.getHeaders())
-                .body(combinedNode)
-                .modified(true)
-                .build();
+        return combinedNode;
     }
 
     /**
-     * ESI POST 요청 처리 (토큰 갱신 등 FORM 형식)
+     * ESI POST 요청 처리 (기본 형식)
      */
     @EsiCache
-    public EsiResponse post(String path, MultiValueMap<String, String> body, String authHeader) {
-        ResponseEntity<JsonNode> entity = restClient.post()
-                .uri(path)
-                .header(HttpHeaders.AUTHORIZATION, authHeader)
-                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+    public EsiResponse post(String path, Object body, String accessToken) {
+        var request = restClient.post()
+                .uri(path.startsWith("http") ? path : ESI_BASE + path);
+
+        if (accessToken != null) {
+            request.header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken);
+        }
+
+        if (body instanceof MultiValueMap) {
+            request.contentType(MediaType.APPLICATION_FORM_URLENCODED);
+        } else {
+            request.contentType(MediaType.APPLICATION_JSON);
+        }
+
+        ResponseEntity<JsonNode> entity = request
                 .body(body)
                 .retrieve()
                 .toEntity(JsonNode.class);
 
-        log.info("path : {}, body : {}",path, entity.getBody());
         return EsiResponse.builder()
                 .headers(entity.getHeaders())
                 .body(entity.getBody())
+                .modified(true)
                 .build();
     }
 
