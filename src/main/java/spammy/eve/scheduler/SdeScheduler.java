@@ -16,7 +16,7 @@ public class SdeScheduler {
 
     private final SdeService sdeUpdateService;
 
-//    @EventListener(ApplicationReadyEvent.class)
+    @EventListener(ApplicationReadyEvent.class)
     public void onStartup() {
         log.info("앱 시작 - SDE 버전 체크");
         sdeUpdateService.checkAndUpdate();

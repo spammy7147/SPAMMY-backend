@@ -4,8 +4,10 @@ import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
 import spammy.eve.character.domain.Character;
 import spammy.eve.character.domain.QCharacter;
+import spammy.eve.character.dto.SummaryResponse;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
 public class CharacterRepositoryImpl implements CharacterRepositoryCustom {
@@ -20,5 +22,38 @@ public class CharacterRepositoryImpl implements CharacterRepositoryCustom {
                 .selectFrom(character)
                 .where(characterId != null ? character.characterId.eq(characterId) : null)
                 .fetch();
+    }
+
+    @Override
+    public SummaryResponse getSummary(Long userId) {
+        QCharacter character = QCharacter.character;
+
+        List<Character> characters = queryFactory
+                .selectFrom(character)
+                .where(character.user.id.eq(userId))
+                .fetch();
+
+        double totalBalance = characters.stream()
+                .mapToDouble(c -> c.getBalance() != null ? c.getBalance() : 0.0)
+                .sum();
+
+        List<SummaryResponse.CharacterSummary> characterSummaries = characters.stream()
+                .map(c -> SummaryResponse.CharacterSummary.builder()
+                        .characterId(c.getCharacterId())
+                        .characterName(c.getCharacterName())
+                        .corporationName(c.getCorporationName())
+                        .allianceName(c.getAllianceName())
+                        .balance(c.getBalance())
+                        .omegaExpiresAt(c.getOmegaExpiresAt())
+                        .lastSyncedAt(c.getLastSyncedAt())
+                        .isMain(c.isMain())
+                        .portraitUrl(c.getPortraitUrl())
+                        .build())
+                .collect(Collectors.toList());
+
+        return SummaryResponse.builder()
+                .totalBalance(totalBalance)
+                .characters(characterSummaries)
+                .build();
     }
 }

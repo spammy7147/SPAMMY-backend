@@ -7,7 +7,7 @@ import spammy.eve.character.domain.Asset;
 import java.util.Collection;
 import java.util.List;
 
-public interface AssetRepository extends JpaRepository<Asset, Long> {
+public interface AssetRepository extends JpaRepository<Asset, Long>, AssetRepositoryCustom {
     List<Asset> findByCharacterCharacterId(Long characterId);
     void deleteByCharacterCharacterId(Long characterId);
     void deleteByCharacterCharacterIdAndItemIdNotIn(Long characterId, Collection<Long> itemIds);

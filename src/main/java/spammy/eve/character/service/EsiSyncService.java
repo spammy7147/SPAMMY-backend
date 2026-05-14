@@ -38,11 +38,12 @@ public class EsiSyncService {
     private final LoyaltyPointRepository loyaltyPointRepository;
     private final StandingRepository standingRepository;
     private final MarketPriceRepository marketPriceRepository;
+    private final CharacterRepository characterRepository;
 
     // ── 캐릭터 공개 정보 (corp, alliance, portrait) ──────────────────
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void syncCharacterInfo(spammy.eve.character.domain.Character character) {
+    public void syncCharacterInfo(Character character, String token) {
         log.info("캐릭터 정보 동기화 중...");
         EsiResponse characterResponse = esiClient.get("/characters/" + character.getCharacterId() + "/", null, null);
         EsiResponse portraitResponse = esiClient.get("/characters/" + character.getCharacterId() + "/portrait/", null, null);
@@ -53,7 +54,7 @@ public class EsiSyncService {
             character.updateInfo(corporationId,allianceId);
 
             EsiResponse alliancesResponse = esiClient.get("/alliances/" + allianceId, null, null);
-            EsiResponse corporationResponse= esiClient.get("/coporations/" + corporationId, null, null);
+            EsiResponse corporationResponse= esiClient.get("/corporations/" + corporationId, null, null);
             String allianceName = null;
             String corporationName = null;
             if(corporationResponse.isModified()) corporationName = getString(corporationResponse.getBody(), "name");
@@ -66,6 +67,16 @@ public class EsiSyncService {
             String portraitUrl = getString(portraitResponse.getBody(), "px128x128");
             character.updatePortrait(portraitUrl);
         }
+
+        if (token != null) {
+            EsiResponse walletResponse = esiClient.get("/characters/" + character.getCharacterId() + "/wallet/", token, null);
+            if (walletResponse.isModified()) {
+                character.updateBalance(walletResponse.getBody().asDouble());
+            }
+        }
+        
+        character.updateLastSyncedAt();
+        characterRepository.save(character);
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -195,7 +206,8 @@ public class EsiSyncService {
                         + "/contracts/"
                         + contract.getContractId()
                         + "/items/",
-                token);
+                token,
+                null);
 
         if(!contractItemResponse.isModified()) return;
 
@@ -222,7 +234,8 @@ public class EsiSyncService {
         EsiResponse blueprintsResponse = esiClient.get("/characters/"
                                                             + character.getCharacterId()
                                                             + "/blueprints/",
-                                                        token);
+                                                            token,
+                                                        null);
 
         if(!blueprintsResponse.isModified()) return;
         List<CharacterBlueprint> batch = new ArrayList<>();
@@ -252,12 +265,13 @@ public class EsiSyncService {
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void syncIndustryJobs(spammy.eve.character.domain.Character character, String token) {
+    public void syncIndustryJobs(Character character, String token) {
         log.info("IndustryJob 동기화 중...");
         EsiResponse industryJobResponse = esiClient.get("/characters/"
                                                                 + character.getCharacterId()
                                                                 + "/industry/jobs/?include_completed=true",
-                                                               token);
+                                                            token,
+                                                        null);
 
         if(!industryJobResponse.isModified()) return;
 
@@ -430,7 +444,8 @@ public class EsiSyncService {
         EsiResponse standingsResponse = esiClient.get("/characters/"
                                                                 + character.getCharacterId()
                                                                 + "/standings/",
-                                                            token);
+                                                            token,
+                                                            null);
         if(!standingsResponse.isModified()) return;
 
         List<Standing> batch = new ArrayList<>();

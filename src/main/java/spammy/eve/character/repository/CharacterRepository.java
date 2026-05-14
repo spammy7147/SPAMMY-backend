@@ -7,15 +7,17 @@ import spammy.eve.character.domain.User;
 import java.util.List;
 import java.util.Optional;
 
-public interface CharacterRepository extends JpaRepository<spammy.eve.character.domain.Character, Long> {
+public interface CharacterRepository extends JpaRepository<Character, Long>, CharacterRepositoryCustom {
 
-    List<spammy.eve.character.domain.Character> findByUser(User user);
+    List<Character> findByUser(User user);
 
     Optional<Character> findByUserAndMainTrue(User user);
 
     Optional<Character> findByUser_IdAndMainTrue(Long userId);
 
     Optional<Character> findFirstByUser_Id(Long userId);
+
+    List<Character> findByUser_Id(Long userId);
 
     boolean existsByUserAndMainTrue(User user);
 }
