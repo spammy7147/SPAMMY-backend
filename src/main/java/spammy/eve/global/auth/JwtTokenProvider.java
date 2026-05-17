@@ -3,12 +3,15 @@ package spammy.eve.global.auth;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import jakarta.annotation.PostConstruct;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Component;
+import spammy.eve.character.domain.User;
+import spammy.eve.character.repository.UserRepository;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
@@ -17,6 +20,7 @@ import java.util.Date;
 
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class JwtTokenProvider {
 
     @Value("${spammy.jwt.secret}")
@@ -24,6 +28,8 @@ public class JwtTokenProvider {
 
     @Value("${spammy.jwt.expiration}")
     private long jwtExpiration;
+
+    private final UserRepository userRepository;
 
     private SecretKey key;
 
@@ -56,9 +62,13 @@ public class JwtTokenProvider {
 
     public Authentication getAuthentication(String token) {
         Long userId = getUserId(token);
-        // principal로 userId를 사용하고, 기본 권한 ROLE_USER 부여
-        return new UsernamePasswordAuthenticationToken(userId, null, 
-                Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER")));
+        return userRepository.findById(userId)
+                .map(user -> new UsernamePasswordAuthenticationToken(user, null,
+                        Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"))))
+                .orElseGet(() -> {
+                    log.warn("JWT token is valid but user {} not found in DB. DB might have been reset.", userId);
+                    return null;
+                });
     }
 
     public Long getUserId(String token) {

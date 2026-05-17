@@ -8,6 +8,7 @@ import spammy.eve.character.dto.SummaryResponse;
 
 import java.util.List;
 import java.util.stream.Collectors;
+import spammy.eve.character.domain.User;
 
 @RequiredArgsConstructor
 public class CharacterRepositoryImpl implements CharacterRepositoryCustom {
@@ -25,13 +26,14 @@ public class CharacterRepositoryImpl implements CharacterRepositoryCustom {
     }
 
     @Override
-    public SummaryResponse getSummary(Long userId) {
+    public SummaryResponse getSummary(User user) {
         QCharacter character = QCharacter.character;
 
         List<Character> characters = queryFactory
                 .selectFrom(character)
-                .where(character.user.id.eq(userId))
+                .where(character.user.id.eq(user.getId()))
                 .fetch();
+
 
         double totalBalance = characters.stream()
                 .mapToDouble(c -> c.getBalance() != null ? c.getBalance() : 0.0)

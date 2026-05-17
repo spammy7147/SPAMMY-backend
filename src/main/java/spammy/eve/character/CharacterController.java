@@ -7,6 +7,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import spammy.eve.character.domain.Character;
+import spammy.eve.character.domain.User;
 import spammy.eve.character.dto.*;
 import spammy.eve.character.service.CharacterService;
 import spammy.eve.character.service.UserService;
@@ -25,54 +26,72 @@ public class CharacterController {
      * 유저의 모든 캐릭터 요약 정보와 총 잔액을 반환합니다.
      */
     @GetMapping("/summary")
-    public ResponseEntity<SummaryResponse> getSummary(@AuthenticationPrincipal Long userId) {
-        log.info("캐릭터 요약 정보 요청 - userId: {}", userId);
-        return ResponseEntity.ok(characterService.getSummary(userId));
+    public ResponseEntity<SummaryResponse> getSummary(@AuthenticationPrincipal User user) {
+        log.info("캐릭터 요약 정보 요청 - user: {}", user);
+        return ResponseEntity.ok(characterService.getSummary(user));
     }
 
     /**
      * 유저의 모든 캐릭터 자산 정보를 반환합니다.
      */
     @GetMapping("/assets")
-    public ResponseEntity<AssetResponse> getAssets(@AuthenticationPrincipal Long userId) {
-        log.info("캐릭터 자산 정보 요청 - userId: {}", userId);
-        return ResponseEntity.ok(characterService.getAssets(userId));
+    public ResponseEntity<AssetResponse> getAssets(@AuthenticationPrincipal User user) {
+        log.info("캐릭터 자산 정보 요청 - user: {}", user);
+        return ResponseEntity.ok(characterService.getAssets(user));
     }
 
     /**
      * 유저의 모든 캐릭터 지갑 내역을 반환합니다.
      */
     @GetMapping("/journal")
-    public ResponseEntity<JournalResponse> getJournal(@AuthenticationPrincipal Long userId) {
-        log.info("캐릭터 지갑 내역 요청 - userId: {}", userId);
-        return ResponseEntity.ok(characterService.getJournal(userId));
+    public ResponseEntity<JournalResponse> getJournal(@AuthenticationPrincipal User user) {
+        log.info("캐릭터 지갑 내역 요청 - user: {}", user);
+        return ResponseEntity.ok(characterService.getJournal(user));
     }
 
     /**
      * 유저의 모든 캐릭터 LP 정보를 반환합니다.
      */
     @GetMapping("/lp")
-    public ResponseEntity<LpResponse> getLoyaltyPoints(@AuthenticationPrincipal Long userId) {
-        log.info("캐릭터 LP 정보 요청 - userId: {}", userId);
-        return ResponseEntity.ok(characterService.getLoyaltyPoints(userId));
+    public ResponseEntity<LpResponse> getLoyaltyPoints(@AuthenticationPrincipal User user) {
+        log.info("캐릭터 LP 정보 요청 - user: {}", user);
+        return ResponseEntity.ok(characterService.getLoyaltyPoints(user));
     }
 
     /**
      * 유저의 모든 캐릭터 미션 정보를 반환합니다.
      */
     @GetMapping("/missions")
-    public ResponseEntity<MissionResponse> getMissions(@AuthenticationPrincipal Long userId) {
-        log.info("캐릭터 미션 정보 요청 - userId: {}", userId);
-        return ResponseEntity.ok(characterService.getMissions(userId));
+    public ResponseEntity<MissionResponse> getMissions(@AuthenticationPrincipal User user) {
+        log.info("캐릭터 미션 정보 요청 - user: {}", user);
+        return ResponseEntity.ok(characterService.getMissions(user));
     }
 
     /**
      * 유저의 모든 캐릭터 평판 정보를 반환합니다.
      */
     @GetMapping("/standings")
-    public ResponseEntity<StandingResponse> getStandings(@AuthenticationPrincipal Long userId) {
-        log.info("캐릭터 평판 정보 요청 - userId: {}", userId);
-        return ResponseEntity.ok(characterService.getStandings(userId));
+    public ResponseEntity<StandingResponse> getStandings(@AuthenticationPrincipal User user) {
+        log.info("캐릭터 평판 정보 요청 - user: {}", user);
+        return ResponseEntity.ok(characterService.getStandings(user));
+    }
+
+    /**
+     * 유저의 모든 캐릭터 마켓 거래 내역을 반환합니다.
+     */
+    @GetMapping("/transactions")
+    public ResponseEntity<TransactionResponse> getTransactions(@AuthenticationPrincipal User user) {
+        log.info("캐릭터 마켓 거래 내역 요청 - user: {}", user);
+        return ResponseEntity.ok(characterService.getTransactions(user));
+    }
+
+    /**
+     * 유저의 모든 캐릭터 마켓 오더 정보를 반환합니다.
+     */
+    @GetMapping("/orders")
+    public ResponseEntity<OrderResponse> getOrders(@AuthenticationPrincipal User user) {
+        log.info("캐릭터 마켓 오더 정보 요청 - user: {}", user);
+        return ResponseEntity.ok(characterService.getOrders(user));
     }
 
     /**
@@ -82,8 +101,8 @@ public class CharacterController {
     @PatchMapping("/{characterId}/omega")
     public ResponseEntity<?> updateOmega(@PathVariable Long characterId,
                                         @RequestBody Map<String, String> body,
-                                         @AuthenticationPrincipal Long userId) {
-
+                                         @AuthenticationPrincipal User user) {
+        Long userId = user.getId();
         Character character = userService.check(characterId, userId);
         characterService.setOmega(body, character);
         return ResponseEntity.ok().build();

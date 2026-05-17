@@ -11,13 +11,9 @@ public interface CharacterRepository extends JpaRepository<Character, Long>, Cha
 
     List<Character> findByUser(User user);
 
+    Optional<Character> findFirstByUser(User user);
+
     Optional<Character> findByUserAndMainTrue(User user);
-
-    Optional<Character> findByUser_IdAndMainTrue(Long userId);
-
-    Optional<Character> findFirstByUser_Id(Long userId);
-
-    List<Character> findByUser_Id(Long userId);
 
     boolean existsByUserAndMainTrue(User user);
 }

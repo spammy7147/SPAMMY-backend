@@ -11,6 +11,7 @@ import spammy.eve.sde.QType;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import spammy.eve.character.domain.User;
 
 @RequiredArgsConstructor
 public class AssetRepositoryImpl implements AssetRepositoryCustom {
@@ -18,7 +19,7 @@ public class AssetRepositoryImpl implements AssetRepositoryCustom {
     private final JPAQueryFactory queryFactory;
 
     @Override
-    public AssetResponse getAssets(Long userId) {
+    public AssetResponse getAssets(User user) {
         QAsset asset = QAsset.asset;
         QCharacter character = QCharacter.character;
         QType type = QType.type;
@@ -30,8 +31,9 @@ public class AssetRepositoryImpl implements AssetRepositoryCustom {
                 .join(asset.character, character)
                 .join(type).on(asset.typeId.eq(type.id))
                 .leftJoin(marketPrice).on(asset.typeId.eq(marketPrice.typeId))
-                .where(character.user.id.eq(userId))
+                .where(character.user.id.eq(user.getId()))
                 .fetch();
+
 
         // 1. 캐릭터별로 그룹화
         Map<String, List<AssetFlatData>> charMap = results.stream()

@@ -9,6 +9,7 @@ import spammy.eve.character.dto.LpResponse;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import spammy.eve.character.domain.User;
 
 @RequiredArgsConstructor
 public class LoyaltyPointRepositoryImpl implements LoyaltyPointRepositoryCustom {
@@ -16,7 +17,7 @@ public class LoyaltyPointRepositoryImpl implements LoyaltyPointRepositoryCustom 
     private final JPAQueryFactory queryFactory;
 
     @Override
-    public LpResponse getLoyaltyPoints(Long userId) {
+    public LpResponse getLoyaltyPoints(User user) {
         QLoyaltyPoint lp = QLoyaltyPoint.loyaltyPoint;
         QCharacter character = QCharacter.character;
 
@@ -24,8 +25,9 @@ public class LoyaltyPointRepositoryImpl implements LoyaltyPointRepositoryCustom 
                 .select(lp, character.characterName)
                 .from(lp)
                 .join(lp.character, character)
-                .where(character.user.id.eq(userId))
+                .where(character.user.id.eq(user.getId()))
                 .fetch();
+
 
         Map<String, List<LpFlatData>> charMap = results.stream()
                 .map(t -> new LpFlatData(

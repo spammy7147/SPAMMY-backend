@@ -9,14 +9,15 @@ import spammy.eve.character.dto.StandingResponse;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import spammy.eve.character.domain.User;
 
 @RequiredArgsConstructor
-public class StandingRepositoryImpl implements StandingRepositoryCustom { // Wait, name mismatch fixed in next tool call
+public class StandingRepositoryImpl implements StandingRepositoryCustom {
 
     private final JPAQueryFactory queryFactory;
 
     @Override
-    public StandingResponse getStandings(Long userId) {
+    public StandingResponse getStandings(User user) {
         QStanding standing = QStanding.standing;
         QCharacter character = QCharacter.character;
 
@@ -24,8 +25,9 @@ public class StandingRepositoryImpl implements StandingRepositoryCustom { // Wai
                 .select(standing, character.characterName)
                 .from(standing)
                 .join(standing.character, character)
-                .where(character.user.id.eq(userId))
+                .where(character.user.id.eq(user.getId()))
                 .fetch();
+
 
         List<StandingResponse.StandingEntry> entries = results.stream()
                 .map(t -> StandingResponse.StandingEntry.builder()

@@ -12,6 +12,7 @@ import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
+import spammy.eve.character.domain.User;
 
 @RequiredArgsConstructor
 public class WalletJournalRepositoryImpl implements WalletJournalRepositoryCustom {
@@ -19,7 +20,7 @@ public class WalletJournalRepositoryImpl implements WalletJournalRepositoryCusto
     private final JPAQueryFactory queryFactory;
 
     @Override
-    public JournalResponse getJournal(Long userId) {
+    public JournalResponse getJournal(User user) {
         QWalletJournal journal = QWalletJournal.walletJournal;
         QCharacter character = QCharacter.character;
 
@@ -27,10 +28,11 @@ public class WalletJournalRepositoryImpl implements WalletJournalRepositoryCusto
                 .select(journal, character.characterName)
                 .from(journal)
                 .join(journal.character, character)
-                .where(character.user.id.eq(userId))
+                .where(character.user.id.eq(user.getId()))
                 .orderBy(journal.date.desc())
                 .limit(1000) // 최근 1000건만
                 .fetch();
+
 
         List<JournalResponse.JournalEntry> entries = new ArrayList<>();
         Map<String, JournalResponse.TypeSummary> summaryMap = new HashMap<>();
@@ -66,7 +68,7 @@ public class WalletJournalRepositoryImpl implements WalletJournalRepositoryCusto
     }
 
     @Override
-    public MissionResponse getMissions(Long userId) {
+    public MissionResponse getMissions(User user) {
         QWalletJournal journal = QWalletJournal.walletJournal;
         QCharacter character = QCharacter.character;
 
@@ -76,7 +78,7 @@ public class WalletJournalRepositoryImpl implements WalletJournalRepositoryCusto
                 .select(journal, character.characterName)
                 .from(journal)
                 .join(journal.character, character)
-                .where(character.user.id.eq(userId)
+                .where(character.user.id.eq(user.getId())
                         .and(journal.date.goe(thirtyDaysAgo))
                         .and(journal.refType.in("agent_mission_reward", "agent_mission_time_bonus")))
                 .orderBy(journal.date.desc())

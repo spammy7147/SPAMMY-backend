@@ -42,7 +42,7 @@ public class SdeService {
     private static final String LATEST_URL = "https://developers.eveonline.com/static-data/tranquility/latest.jsonl";
     private static final String CHANGES_URL_PREFIX = "https://developers.eveonline.com/static-data/tranquility/changes/";
 
-    public boolean checkAndUpdate() {
+    public void checkAndUpdate() {
         try {
             // 1. 저장된 빌드 넘버 조회
             Long savedBuildNumber = sdeVersionRepository.findTopByOrderByUpdatedAtDesc()
@@ -51,34 +51,33 @@ public class SdeService {
 
             log.info("SDE 버전 체크 중... (저장된 Build: {})", savedBuildNumber);
 
-            // 2. latest.jsonl 에서 최신 빌드 넘버 확인
-            String latestJsonl = restClient.get().uri(LATEST_URL).retrieve().body(String.class);
-            if (latestJsonl == null) return false;
-            
-            JsonNode latestNode = om().readTree(latestJsonl);
-            Long remoteBuildNumber = latestNode.path("buildNumber").asLong();
+            // 2. latest.jsonl 에서 최신 빌드 넘버  확인
+            JsonNode latestJsonl = restClient.get().uri(LATEST_URL).retrieve().body(JsonNode.class);
+            if (latestJsonl == null) return;
+
+            Long remoteBuildNumber = latestJsonl.path("buildNumber").asLong();
 
             if (savedBuildNumber.equals(remoteBuildNumber)) {
                 log.info("SDE 최신 상태 유지 (Build: {})", remoteBuildNumber);
-                return false;
+                return;
             }
 
             log.info("SDE 새 빌드 감지 ({} -> {})", savedBuildNumber, remoteBuildNumber);
 
             // 3. 변경점(Changes) 확인하여 업데이트 필요 여부 결정
-            boolean needsUpdate = true;
+            SdeChanges changes = null;
             if (savedBuildNumber > 0) {
                 try {
                     String changesUrl = CHANGES_URL_PREFIX + remoteBuildNumber + ".jsonl";
                     String changesJsonl = restClient.get().uri(changesUrl).retrieve().body(String.class);
-                    
+
                     if (changesJsonl != null) {
                         JsonNode metaNode = om().readTree(changesJsonl.split("\n")[0]);
                         Long lastBuildNumber = metaNode.path("lastBuildNumber").asLong();
 
                         // 연속된 빌드인 경우에만 변경점 필터링 적용
                         if (savedBuildNumber.equals(lastBuildNumber)) {
-                            needsUpdate = isRelevantChangeFound(changesJsonl);
+                            changes = extractChanges(changesJsonl);
                         } else {
                             log.info("이전 빌드({})와 저장된 빌드({})가 연속되지 않아 전체 업데이트 검토", lastBuildNumber, savedBuildNumber);
                         }
@@ -88,10 +87,10 @@ public class SdeService {
                 }
             }
 
-            if (!needsUpdate) {
+            if (changes != null && !changes.hasChanges()) {
                 log.info("관련 도메인(Category/Group/Type/Blueprint) 변경 없음. 빌드 번호만 업데이트.");
                 sdeVersionRepository.save(SdeVersion.of("SKIP", "SKIP", remoteBuildNumber));
-                return true;
+                return;
             }
 
             // 4. 실제 파일 다운로드 및 적재
@@ -105,35 +104,59 @@ public class SdeService {
             String newEtag = response.getHeaders().getFirst("ETag");
             String newLastModified = response.getHeaders().getFirst("Last-Modified");
 
-            reloadFromZip(zipBytes);
+            reloadFromZip(zipBytes, changes);
 
             // 5. 버전 저장
             sdeVersionRepository.save(SdeVersion.of(newEtag, newLastModified, remoteBuildNumber));
 
             log.info("SDE 업데이트 완료 (Build: {})", remoteBuildNumber);
-            return true;
 
         } catch (Exception e) {
             log.error("SDE 업데이트 실패", e);
-            return false;
         }
     }
 
-    private boolean isRelevantChangeFound(String jsonl) throws Exception {
-        Set<String> relevantKeys = Set.of("categories", "groups", "types", "blueprints");
+    private record SdeChanges(
+            Set<Long> updatedCategories, Set<Long> deletedCategories,
+            Set<Long> updatedGroups, Set<Long> deletedGroups,
+            Set<Long> updatedTypes, Set<Long> deletedTypes,
+            Set<Long> updatedBlueprints, Set<Long> deletedBlueprints
+    ) {
+        public boolean hasChanges() {
+            return !updatedCategories.isEmpty() || !deletedCategories.isEmpty() ||
+                    !updatedGroups.isEmpty() || !deletedGroups.isEmpty() ||
+                    !updatedTypes.isEmpty() || !deletedTypes.isEmpty() ||
+                    !updatedBlueprints.isEmpty() || !deletedBlueprints.isEmpty();
+        }
+    }
+
+    private SdeChanges extractChanges(String jsonl) throws Exception {
+        Set<Long> upCategory = new HashSet<>(), delCategory = new HashSet<>();
+        Set<Long> upGroup = new HashSet<>(), delGroup = new HashSet<>();
+        Set<Long> upType = new HashSet<>(), delType = new HashSet<>();
+        Set<Long> upBlueprint = new HashSet<>(), delBlueprint = new HashSet<>();
+
         String[] lines = jsonl.split("\n");
         for (String line : lines) {
-            if (line.isBlank()) continue;
+            if (line.isBlank() || line.startsWith("{ \"_key\": \"_meta\"")) continue;
             JsonNode node = om().readTree(line);
             String key = node.path("_key").asString();
-            if (relevantKeys.contains(key)) {
-                if (node.has("added") || node.has("changed") || node.has("deleted") || node.has("changedLocalization")) {
-                    log.info("변경 감지된 도메인: {}", key);
-                    return true;
-                }
+
+            switch (key) {
+                case "categories" -> collectIds(node, upCategory, delCategory);
+                case "groups" -> collectIds(node, upGroup, delGroup);
+                case "types" -> collectIds(node, upType, delType);
+                case "blueprints" -> collectIds(node, upBlueprint, delBlueprint);
             }
         }
-        return false;
+        return new SdeChanges(upCategory, delCategory, upGroup, delGroup, upType, delType, upBlueprint, delBlueprint);
+    }
+
+    private void collectIds(JsonNode node, Set<Long> updateSet, Set<Long> deleteSet) {
+        if (node.has("added")) node.path("added").forEach(id -> updateSet.add(id.asLong()));
+        if (node.has("changed")) node.path("changed").forEach(id -> updateSet.add(id.asLong()));
+        if (node.has("changedLocalization")) node.path("changedLocalization").forEach(id -> updateSet.add(id.asLong()));
+        if (node.has("deleted")) node.path("deleted").forEach(id -> deleteSet.add(id.asLong()));
     }
 
     // ZIP에서 필요한 파일만 추출
@@ -155,42 +178,81 @@ public class SdeService {
         return result;
     }
 
-    private void reloadFromZip(byte[] zipBytes) throws Exception {
+    private void reloadFromZip(byte[] zipBytes, SdeChanges changes) throws Exception {
         log.info("ZIP에서 파일 추출 중...");
         Map<String, byte[]> files = extractFromZip(zipBytes, "categories.jsonl", "groups.jsonl", "types.jsonl", "blueprints.jsonl");
 
-        log.info("SDE 증분 업데이트 시작...");
-        parseCategories(files.get("categories.jsonl"));
-        parseGroups(files.get("groups.jsonl"));
-        parseTypes(files.get("types.jsonl"));
-        parseBlueprints(files.get("blueprints.jsonl"));
+        if (changes == null) {
+            log.info("이전 빌드 정보를 찾을 수 없거나 버전이 누락되어 전체 업데이트를 수행합니다. 기존 데이터를 초기화합니다.");
+            blueprintItemRepository.deleteAllInBatch();
+            bluePrintRepository.deleteAllInBatch();
+            typeRepository.deleteAllInBatch();
+            groupRepository.deleteAllInBatch();
+            categoryRepository.deleteAllInBatch();
+        }
+
+        log.info("SDE 업데이트 시작 ({} 방식)", (changes == null ? "전체" : "증분"));
+        
+        parseCategories(files.get("categories.jsonl"),
+                changes != null ? changes.updatedCategories() : null,
+                changes != null ? changes.deletedCategories() : null);
+
+        parseGroups(files.get("groups.jsonl"),
+                changes != null ? changes.updatedGroups() : null,
+                changes != null ? changes.deletedGroups() : null);
+
+        parseTypes(files.get("types.jsonl"),
+                changes != null ? changes.updatedTypes() : null,
+                changes != null ? changes.deletedTypes() : null);
+
+        parseBlueprints(files.get("blueprints.jsonl"),
+                changes != null ? changes.updatedBlueprints() : null,
+                changes != null ? changes.deletedBlueprints() : null);
     }
 
-    private void parseCategories(byte[] data) throws Exception {
+    private void parseCategories(byte[] data, Set<Long> updateIds, Set<Long> deleteIds) throws Exception {
+        // 증분 업데이트인 경우에만 선택적 삭제 수행 (전체 업데이트는 이미 초기화됨)
+        if (updateIds != null && deleteIds != null && !deleteIds.isEmpty()) {
+            categoryRepository.deleteAllById(deleteIds);
+        }
+
         List<Category> batch = new ArrayList<>();
-        forEachNode(data, om(), root -> batch.add(Category.builder()
-                .id(getLong(root, "_key"))
-                .iconId(getLong(root, "iconID"))
-                .nameEn(getString(root, "name", "en"))
-                .nameKo(getString(root, "name", "ko"))
-                .published(getBoolean(root, "published"))
-                .build()));
+        forEachNode(data, om(), root -> {
+            Long id = getLong(root, "_key");
+            // 증분 업데이트인 경우 업데이트 대상 ID가 아니면 스킵
+            if (updateIds != null && !updateIds.contains(id)) return;
+
+            batch.add(Category.builder()
+                    .id(id)
+                    .iconId(getLong(root, "iconID"))
+                    .nameEn(getString(root, "name", "en"))
+                    .nameKo(getString(root, "name", "ko"))
+                    .published(getBoolean(root, "published"))
+                    .build());
+        });
 
         categoryRepository.saveAll(batch);
-        log.info("Category 증분 업데이트 완료 ({}건)", batch.size());
+        log.info("Category 업데이트 완료 ({}건)", batch.size());
     }
 
-    private void parseGroups(byte[] data) throws Exception {
+    private void parseGroups(byte[] data, Set<Long> updateIds, Set<Long> deleteIds) throws Exception {
+        if (updateIds != null && deleteIds != null && !deleteIds.isEmpty()) {
+            groupRepository.deleteAllById(deleteIds);
+        }
+
         Map<Long, Category> categoryCache = categoryRepository.findAll()
                 .stream().collect(Collectors.toMap(Category::getId, c -> c));
         List<Group> batch = new ArrayList<>();
 
         forEachNode(data, om(), root -> {
+            Long id = getLong(root, "_key");
+            if (updateIds != null && !updateIds.contains(id)) return;
+
             Category category = categoryCache.get(getLong(root, "categoryID"));
             if (category == null) return;
 
             batch.add(Group.builder()
-                    .id(getLong(root, "_key"))
+                    .id(id)
                     .category(category)
                     .nameEn(getString(root, "name", "en"))
                     .nameKo(getString(root, "name", "ko"))
@@ -199,20 +261,27 @@ public class SdeService {
         });
 
         groupRepository.saveAll(batch);
-        log.info("Group 증분 업데이트 완료 ({}건)", batch.size());
+        log.info("Group 업데이트 완료 ({}건)", batch.size());
     }
 
-    private void parseTypes(byte[] data) throws Exception {
+    private void parseTypes(byte[] data, Set<Long> updateIds, Set<Long> deleteIds) throws Exception {
+        if (updateIds != null && deleteIds != null && !deleteIds.isEmpty()) {
+            typeRepository.deleteAllById(deleteIds);
+        }
+
         Map<Long, Group> groupCache = groupRepository.findAll()
                 .stream().collect(Collectors.toMap(Group::getId, g -> g));
         List<Type> batch = new ArrayList<>();
 
         forEachNode(data, om(), root -> {
+            Long id = getLong(root, "_key");
+            if (updateIds != null && !updateIds.contains(id)) return;
+
             Group group = groupCache.get(getLong(root, "groupID"));
             if (group == null) return;
 
             batch.add(Type.builder()
-                    .id(getLong(root, "_key"))
+                    .id(id)
                     .group(group)
                     .nameEn(getString(root, "name", "en"))
                     .nameKo(getString(root, "name", "ko"))
@@ -224,39 +293,32 @@ public class SdeService {
         });
 
         typeRepository.saveAll(batch);
-        log.info("Type 증분 업데이트 완료 ({}건)", batch.size());
+        log.info("Type 업데이트 완료 ({}건)", batch.size());
     }
 
-    private void parseBlueprints(byte[] data) throws Exception {
-        // BlueprintItem은 복합 키 유니크 제약이 있어 증분 업데이트 시 충돌이 잦으므로,
-        // 전체 데이터를 재적재하기 전에 기존 Item들을 먼저 삭제함.
-        blueprintItemRepository.deleteAllInBatch();
+    private void parseBlueprints(byte[] data, Set<Long> updateIds, Set<Long> deleteIds) throws Exception {
+        // 증분 업데이트 상황에서의 삭제 처리
+        if (updateIds != null) {
+            if (deleteIds != null && !deleteIds.isEmpty()) {
+                blueprintItemRepository.deleteByBlueprintTypeIdIn(deleteIds);
+                bluePrintRepository.deleteByBlueprintTypeIdIn(deleteIds);
+            }
+            if (!updateIds.isEmpty()) {
+                // 업데이트 대상도 기존 데이터 삭제 후 재삽입
+                blueprintItemRepository.deleteByBlueprintTypeIdIn(updateIds);
+                bluePrintRepository.deleteByBlueprintTypeIdIn(updateIds);
+            }
+        }
 
         Map<Long, Type> typeCache = typeRepository.findAll()
                 .stream().collect(Collectors.toMap(Type::getId, t -> t));
-        
-        // Blueprint는 복합키 개념(typeId + activity)이므로 관리가 까다로움. 
-        // 여기서는 단순화를 위해 blueprint_type_id 기준으로 기존 데이터를 조회하여 매칭하거나, 
-        // 중복 방지를 위해 기존 데이터를 삭제 후 재삽입하는 방식 등을 고려할 수 있으나,
-        // 사용자 요청에 따라 'row 자체를 바꿔치는' 방식(SaveAll upsert)을 유지하되 
-        // Blueprint의 경우 activity별로 unique하므로 기존 데이터를 activity별로 관리해야 함.
-        
-        // 기존 Blueprint & Items 삭제 (증분 처리가 가장 복잡한 영역이므로 Blueprint는 일단 초기화 후 재삽입 방식 유지 권장되나, 
-        // 전체 삭제를 피하기 위해 blueprint_type_id 단위로 처리하는 것이 이상적임)
-        // 일단은 전체 삭제 대신 saveAll(upsert)을 시도하되, Blueprint의 ID(PK) 관리가 필요함.
-        
-        // 효율적인 처리를 위해 Blueprint는 비즈니스 키(blueprintTypeId, activityType)로 기존 ID를 맵핑
-        Map<String, Long> existingBpIds = bluePrintRepository.findAll().stream()
-                .collect(Collectors.toMap(
-                        b -> b.getBlueprintTypeId() + ":" + b.getActivityType(),
-                        Blueprint::getId
-                ));
 
         List<Blueprint> batch = new ArrayList<>();
         forEachNode(data, om(), root -> {
             Long typeId = getLong(root, "_key");
-            Integer limit = getInt(root, "maxProductionLimit");
+            if (updateIds != null && !updateIds.contains(typeId)) return;
 
+            Integer limit = getInt(root, "maxProductionLimit");
             for (String activityName : root.path("activities").propertyNames()) {
                 ActivityType activityType;
                 try {
@@ -266,22 +328,19 @@ public class SdeService {
                 }
 
                 JsonNode activityNode = root.path("activities").path(activityName);
-                String key = typeId + ":" + activityType;
-                Long existingId = existingBpIds.get(key);
-
-                buildBlueprint(existingId, typeId, limit, activityType, activityNode, typeCache)
+                buildBlueprint(null, typeId, limit, activityType, activityNode, typeCache)
                         .ifPresent(batch::add);
             }
         });
 
         bluePrintRepository.saveAll(batch);
-        log.info("Blueprint 증분 업데이트 완료 ({}건)", batch.size());
+        log.info("Blueprint 업데이트 완료 ({}건)", batch.size());
     }
 
     private Optional<Blueprint> buildBlueprint(Long existingId, Long typeId, Integer limit, ActivityType activityType,
                                                JsonNode activity, Map<Long, Type> typeCache) {
         Blueprint blueprint = Blueprint.builder()
-                .id(existingId) // 기존 ID가 있으면 할당하여 Update 유도
+                .id(existingId)
                 .blueprintTypeId(typeId)
                 .activityType(activityType)
                 .timeSeconds(getInt(activity, "time"))

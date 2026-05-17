@@ -6,7 +6,7 @@ import spammy.eve.character.domain.MarketOrder;
 
 import java.util.List;
 
-public interface MarketOrderRepository extends JpaRepository<MarketOrder, Long> {
+public interface MarketOrderRepository extends JpaRepository<MarketOrder, Long>, MarketOrderRepositoryCustom {
     List<MarketOrder> findByCharacterCharacterId(Long characterId);
     List<MarketOrder> findByCharacterCharacterIdAndIsBuyOrder(Long characterId, Boolean isBuyOrder);
     void deleteByCharacterCharacterId(Long characterId);
