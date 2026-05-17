@@ -10,6 +10,7 @@ import spammy.eve.character.domain.Character;
 import spammy.eve.character.repository.*;
 import spammy.eve.client.EsiClient;
 import spammy.eve.client.EsiResponse;
+import spammy.eve.global.aop.EsiToken;
 import spammy.eve.market.MarketPrice;
 import spammy.eve.market.MarketPriceRepository;
 import tools.jackson.databind.JsonNode;
@@ -38,12 +39,17 @@ public class EsiSyncService {
     private final LoyaltyPointRepository loyaltyPointRepository;
     private final StandingRepository standingRepository;
     private final MarketPriceRepository marketPriceRepository;
+    private final CharacterRepository characterRepository;
 
     // ── 캐릭터 공개 정보 (corp, alliance, portrait) ──────────────────
 
+    @EsiToken
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void syncCharacterInfo(spammy.eve.character.domain.Character character) {
+    public void syncCharacterInfo(Character character) {
         log.info("캐릭터 정보 동기화 중...");
+        log.info("캐릭터 : {}", character.getCharacterName());
+        log.info("토큰 : {}", character.getAccessToken());
+
         EsiResponse characterResponse = esiClient.get("/characters/" + character.getCharacterId() + "/", null, null);
         EsiResponse portraitResponse = esiClient.get("/characters/" + character.getCharacterId() + "/portrait/", null, null);
 
@@ -53,7 +59,7 @@ public class EsiSyncService {
             character.updateInfo(corporationId,allianceId);
 
             EsiResponse alliancesResponse = esiClient.get("/alliances/" + allianceId, null, null);
-            EsiResponse corporationResponse= esiClient.get("/coporations/" + corporationId, null, null);
+            EsiResponse corporationResponse= esiClient.get("/corporations/" + corporationId, null, null);
             String allianceName = null;
             String corporationName = null;
             if(corporationResponse.isModified()) corporationName = getString(corporationResponse.getBody(), "name");
@@ -66,15 +72,28 @@ public class EsiSyncService {
             String portraitUrl = getString(portraitResponse.getBody(), "px128x128");
             character.updatePortrait(portraitUrl);
         }
+
+        String token = character.getAccessToken();
+        if (token != null) {
+            EsiResponse walletResponse = esiClient.get("/characters/" + character.getCharacterId() + "/wallet/", token, null);
+            if (walletResponse.isModified()) {
+                character.updateBalance(walletResponse.getBody().asDouble());
+            }
+        }
+        
+        character.updateLastSyncedAt();
+        characterRepository.save(character);
     }
 
+    @EsiToken
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void syncWalletJournal(Character character, String token) {
+    public void syncWalletJournal(Character character) {
         log.info("WalletJournal 동기화 중...");
         Long lastJournalId = walletJournalRepository.findTopByCharacterCharacterIdOrderByJournalIdDesc(character.getCharacterId())
                 .map(WalletJournal::getJournalId)
                 .orElse(0L);
 
+        String token = character.getAccessToken();
         EsiResponse walletJournalResponse = esiClient.get("/characters/" + character.getCharacterId() + "/wallet/journal/", token, null);
         if (walletJournalResponse.isModified()) {
             List<WalletJournal> batch = new ArrayList<>();
@@ -103,13 +122,18 @@ public class EsiSyncService {
         }
     }
 
+    @EsiToken
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void syncWalletTransactions(Character character, String token) {
+    public void syncWalletTransactions(Character character) {
         log.info("WalletTransaction 동기화 중...");
+        log.info("캐릭터 : {}", character.getCharacterName());
+        log.info("토큰 : {}", character.getAccessToken());
+
         Long lastTransactionId = walletTransactionRepository.findTopByCharacterCharacterIdOrderByTransactionIdDesc(character.getCharacterId())
                 .map(WalletTransaction::getTransactionId)
                 .orElse(0L);
 
+        String token = character.getAccessToken();
         EsiResponse walletTransactionResponse = esiClient.get("/characters/" + character.getCharacterId() + "/wallet/transactions/", token, null);
         if (!walletTransactionResponse.isModified()) return;
 
@@ -138,10 +162,12 @@ public class EsiSyncService {
 
     // ── 컨트랙트 ─────────────────────────────────────────────────────
 
+    @EsiToken
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void syncContracts(spammy.eve.character.domain.Character character, String token) {
+    public void syncContracts(Character character) {
         log.info("Contract 동기화 중...");
 
+        String token = character.getAccessToken();
         EsiResponse contractResponse = esiClient.get("/characters/" + character.getCharacterId() + "/contracts/", token, null);
         if(!contractResponse.isModified()) return;
 
@@ -181,21 +207,23 @@ public class EsiSyncService {
                                 .forCorporation(getBoolean(node, "for_corporation"))
                                 .build();
                         batch.add(newContract);
-                        syncContractItems(character, token, newContract);
+                        syncContractItems(character, newContract);
                     });
         }
         contractRepository.saveAll(batch);
         log.info("Contract 동기화 완료 ({}건 처리)", batch.size());
     }
 
-    private void syncContractItems(spammy.eve.character.domain.Character character, String token, CharacterContract contract) {
+    private void syncContractItems(Character character, CharacterContract contract) {
+        String token = character.getAccessToken();
         EsiResponse contractItemResponse = esiClient.get(
                 "/characters/"
                         + character.getCharacterId()
                         + "/contracts/"
                         + contract.getContractId()
                         + "/items/",
-                token);
+                token,
+                null);
 
         if(!contractItemResponse.isModified()) return;
 
@@ -216,13 +244,16 @@ public class EsiSyncService {
 
     // ── 블루프린트 ───────────────────────────────────────────────────
 
+    @EsiToken
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void syncBlueprints(spammy.eve.character.domain.Character character, String token) {
+    public void syncBlueprints(Character character) {
         log.info("Blueprint 동기화 중...");
+        String token = character.getAccessToken();
         EsiResponse blueprintsResponse = esiClient.get("/characters/"
                                                             + character.getCharacterId()
                                                             + "/blueprints/",
-                                                        token);
+                                                            token,
+                                                        null);
 
         if(!blueprintsResponse.isModified()) return;
         List<CharacterBlueprint> batch = new ArrayList<>();
@@ -251,13 +282,16 @@ public class EsiSyncService {
         characterBlueprintRepository.saveAll(batch);
     }
 
+    @EsiToken
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void syncIndustryJobs(spammy.eve.character.domain.Character character, String token) {
+    public void syncIndustryJobs(Character character) {
         log.info("IndustryJob 동기화 중...");
+        String token = character.getAccessToken();
         EsiResponse industryJobResponse = esiClient.get("/characters/"
                                                                 + character.getCharacterId()
                                                                 + "/industry/jobs/?include_completed=true",
-                                                               token);
+                                                            token,
+                                                        null);
 
         if(!industryJobResponse.isModified()) return;
 
@@ -301,10 +335,14 @@ public class EsiSyncService {
         log.info("IndustryJob 동기화 완료 ({}건 추가)", batch.size());
     }
 
+    @EsiToken
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void syncMarketOrders(Character character, String token) {
+    public void syncMarketOrders(Character character) {
         log.info("MarketOrder 동기화 중...");
+        log.info("캐릭터 : {}", character.getCharacterName());
+        log.info("토큰 : {}", character.getAccessToken());
 
+        String token = character.getAccessToken();
         // 1. 활성 오더 동기화
         EsiResponse activeOrdersResponse = esiClient.get("/characters/" + character.getCharacterId() + "/orders/", token, null);
         List<MarketOrder> activeOrders = new ArrayList<>();
@@ -364,9 +402,11 @@ public class EsiSyncService {
         log.info("MarketOrder 동기화 완료");
     }
 
+    @EsiToken
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void syncAssets(Character character, String token) {
+    public void syncAssets(Character character) {
         log.info("Asset 동기화 중...");
+        String token = character.getAccessToken();
         EsiResponse assetsResponse = esiClient.get("/characters/" + character.getCharacterId() + "/assets/", token, null);
         if(!assetsResponse.isModified()) return;
 
@@ -396,9 +436,11 @@ public class EsiSyncService {
         log.info("Asset 동기화 완료 ({}건)", batch.size());
     }
 
+    @EsiToken
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void syncLoyaltyPoints(Character character, String token) {
+    public void syncLoyaltyPoints(Character character) {
         log.info("LoyaltyPoint 동기화 중...");
+        String token = character.getAccessToken();
         EsiResponse loyaltyPointsResponse = esiClient.get("/characters/" + character.getCharacterId() + "/loyalty/points/", token, null);
         if(!loyaltyPointsResponse.isModified()) return;
 
@@ -424,13 +466,16 @@ public class EsiSyncService {
         log.info("LoyaltyPoint 동기화 완료");
     }
 
+    @EsiToken
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void syncStandings(Character character, String token) {
+    public void syncStandings(Character character) {
         log.info("Standing 동기화 중...");
+        String token = character.getAccessToken();
         EsiResponse standingsResponse = esiClient.get("/characters/"
                                                                 + character.getCharacterId()
                                                                 + "/standings/",
-                                                            token);
+                                                            token,
+                                                            null);
         if(!standingsResponse.isModified()) return;
 
         List<Standing> batch = new ArrayList<>();

@@ -83,3 +83,4 @@ public class MarketOrder extends BaseEntity {
         this.completedAt = completedAt;
     }
 }
+

@@ -14,8 +14,6 @@ import spammy.eve.client.EsiResponse;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.stream.IntStream;
 
@@ -113,10 +111,6 @@ public class EsiCacheAspect {
             return Instant.from(DateTimeFormatter.RFC_1123_DATE_TIME.parse(expiresStr));
         } catch (Exception e) {
             return Instant.now().plusSeconds(60);
-        }
-    }
-}
-       return Instant.now().plusSeconds(60);
         }
     }
 }

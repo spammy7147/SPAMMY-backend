@@ -7,7 +7,7 @@ import spammy.eve.character.domain.LoyaltyPoint;
 import java.util.List;
 import java.util.Optional;
 
-public interface LoyaltyPointRepository extends JpaRepository<LoyaltyPoint, Long> {
+public interface LoyaltyPointRepository extends JpaRepository<LoyaltyPoint, Long>, LoyaltyPointRepositoryCustom {
     List<LoyaltyPoint> findByCharacterCharacterId(Long characterId);
     Optional<LoyaltyPoint> findByCharacterCharacterIdAndCorporationId(Long characterId, Long corporationId);
 }

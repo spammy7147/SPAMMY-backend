@@ -2,6 +2,7 @@ package spammy.eve.global.auth;
 
 import lombok.Builder;
 import lombok.Getter;
+import spammy.eve.character.domain.User;
 
 @Getter
 @Builder

@@ -7,7 +7,7 @@ import spammy.eve.character.domain.WalletTransaction;
 import java.util.Optional;
 import java.util.Set;
 
-public interface WalletTransactionRepository extends JpaRepository<WalletTransaction, Long> {
+public interface WalletTransactionRepository extends JpaRepository<WalletTransaction, Long>, WalletTransactionRepositoryCustom {
     Set<Long> findTransactionIdsByCharacterCharacterId(Long characterId);
 
     Optional<WalletTransaction> findTopByCharacterCharacterIdOrderByTransactionIdDesc(Long characterId);

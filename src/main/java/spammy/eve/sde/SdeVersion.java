@@ -19,16 +19,20 @@ public class SdeVersion {
     @Column(name = "etag", nullable = false)
     private String etag;
 
+    @Column(name = "build_number")
+    private Long buildNumber;
+
     @Column(name = "last_modified")
     private String lastModified;
 
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
-    public static SdeVersion of(String etag, String lastModified) {
+    public static SdeVersion of(String etag, String lastModified, Long buildNumber) {
         return SdeVersion.builder()
                 .etag(etag)
                 .lastModified(lastModified)
+                .buildNumber(buildNumber)
                 .updatedAt(Instant.now())
                 .build();
     }

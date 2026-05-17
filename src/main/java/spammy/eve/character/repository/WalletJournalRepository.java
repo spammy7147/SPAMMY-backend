@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
-public interface WalletJournalRepository extends JpaRepository<WalletJournal, Long> {
+public interface WalletJournalRepository extends JpaRepository<WalletJournal, Long>, WalletJournalRepositoryCustom {
     Set<Long> findJournalIdsByCharacterCharacterId(Long characterId);
 
     List<WalletJournal> getWalletJournalByJournalId(Long journalId);

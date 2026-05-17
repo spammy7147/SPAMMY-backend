@@ -10,7 +10,6 @@ build/
 .env.*
 application-secrets.properties
 application-local.properties
-GEMINI.md
 .DS_Store
 ### STS ###
 .apt_generated
@@ -44,3 +43,6 @@ out/
 .vscode/
 
 src/main/resources/static/
+GEMINI.md
+example.html
+
