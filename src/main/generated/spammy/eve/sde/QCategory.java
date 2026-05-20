@@ -1,4 +1,4 @@
-package spammy.eve.domain.sde;
+package spammy.eve.sde;
 
 import static com.querydsl.core.types.PathMetadataFactory.*;
 
@@ -15,7 +15,7 @@ import com.querydsl.core.types.Path;
 @Generated("com.querydsl.codegen.DefaultEntitySerializer")
 public class QCategory extends EntityPathBase<Category> {
 
-    private static final long serialVersionUID = 1124620079L;
+    private static final long serialVersionUID = -1716700789L;
 
     public static final QCategory category = new QCategory("category");
 

@@ -1,4 +1,4 @@
-package spammy.eve.domain.market;
+package spammy.eve.market;
 
 import static com.querydsl.core.types.PathMetadataFactory.*;
 
@@ -15,7 +15,7 @@ import com.querydsl.core.types.Path;
 @Generated("com.querydsl.codegen.DefaultEntitySerializer")
 public class QMarketPrice extends EntityPathBase<MarketPrice> {
 
-    private static final long serialVersionUID = -1721719822L;
+    private static final long serialVersionUID = -1475260082L;
 
     public static final QMarketPrice marketPrice = new QMarketPrice("marketPrice");
 

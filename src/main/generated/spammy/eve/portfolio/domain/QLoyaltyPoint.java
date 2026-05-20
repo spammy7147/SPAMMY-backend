@@ -1,4 +1,4 @@
-package spammy.eve.domain.loyalty;
+package spammy.eve.portfolio.domain;
 
 import static com.querydsl.core.types.PathMetadataFactory.*;
 
@@ -16,21 +16,27 @@ import com.querydsl.core.types.dsl.PathInits;
 @Generated("com.querydsl.codegen.DefaultEntitySerializer")
 public class QLoyaltyPoint extends EntityPathBase<LoyaltyPoint> {
 
-    private static final long serialVersionUID = -1333086135L;
+    private static final long serialVersionUID = -832563013L;
 
     private static final PathInits INITS = PathInits.DIRECT2;
 
     public static final QLoyaltyPoint loyaltyPoint = new QLoyaltyPoint("loyaltyPoint");
 
-    public final spammy.eve.domain.character.QCharacter character;
+    public final spammy.eve.global.domain.QBaseEntity _super = new spammy.eve.global.domain.QBaseEntity(this);
+
+    public final QCharacter character;
 
     public final NumberPath<Long> corporationId = createNumber("corporationId", Long.class);
+
+    //inherited
+    public final DateTimePath<java.time.LocalDateTime> createdAt = _super.createdAt;
 
     public final NumberPath<Long> id = createNumber("id", Long.class);
 
     public final NumberPath<Integer> loyaltyPoints = createNumber("loyaltyPoints", Integer.class);
 
-    public final DateTimePath<java.time.Instant> updatedAt = createDateTime("updatedAt", java.time.Instant.class);
+    //inherited
+    public final DateTimePath<java.time.LocalDateTime> updatedAt = _super.updatedAt;
 
     public QLoyaltyPoint(String variable) {
         this(LoyaltyPoint.class, forVariable(variable), INITS);
@@ -50,7 +56,7 @@ public class QLoyaltyPoint extends EntityPathBase<LoyaltyPoint> {
 
     public QLoyaltyPoint(Class<? extends LoyaltyPoint> type, PathMetadata metadata, PathInits inits) {
         super(type, metadata, inits);
-        this.character = inits.isInitialized("character") ? new spammy.eve.domain.character.QCharacter(forProperty("character"), inits.get("character")) : null;
+        this.character = inits.isInitialized("character") ? new QCharacter(forProperty("character"), inits.get("character")) : null;
     }
 
 }

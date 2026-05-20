@@ -1,4 +1,4 @@
-package spammy.eve.domain.sde;
+package spammy.eve.sde;
 
 import static com.querydsl.core.types.PathMetadataFactory.*;
 
@@ -15,9 +15,11 @@ import com.querydsl.core.types.Path;
 @Generated("com.querydsl.codegen.DefaultEntitySerializer")
 public class QSdeVersion extends EntityPathBase<SdeVersion> {
 
-    private static final long serialVersionUID = 1891985397L;
+    private static final long serialVersionUID = -1313135791L;
 
     public static final QSdeVersion sdeVersion = new QSdeVersion("sdeVersion");
+
+    public final NumberPath<Long> buildNumber = createNumber("buildNumber", Long.class);
 
     public final StringPath etag = createString("etag");
 

@@ -1,4 +1,4 @@
-package spammy.eve.domain.blueprint;
+package spammy.eve.portfolio.domain;
 
 import static com.querydsl.core.types.PathMetadataFactory.*;
 
@@ -16,13 +16,18 @@ import com.querydsl.core.types.dsl.PathInits;
 @Generated("com.querydsl.codegen.DefaultEntitySerializer")
 public class QCharacterBlueprint extends EntityPathBase<CharacterBlueprint> {
 
-    private static final long serialVersionUID = 1192329308L;
+    private static final long serialVersionUID = 1469474939L;
 
     private static final PathInits INITS = PathInits.DIRECT2;
 
     public static final QCharacterBlueprint characterBlueprint = new QCharacterBlueprint("characterBlueprint");
 
-    public final spammy.eve.domain.character.QCharacter character;
+    public final spammy.eve.global.domain.QBaseEntity _super = new spammy.eve.global.domain.QBaseEntity(this);
+
+    public final QCharacter character;
+
+    //inherited
+    public final DateTimePath<java.time.LocalDateTime> createdAt = _super.createdAt;
 
     public final NumberPath<Long> itemId = createNumber("itemId", Long.class);
 
@@ -39,6 +44,9 @@ public class QCharacterBlueprint extends EntityPathBase<CharacterBlueprint> {
     public final NumberPath<Integer> timeEfficiency = createNumber("timeEfficiency", Integer.class);
 
     public final NumberPath<Long> typeId = createNumber("typeId", Long.class);
+
+    //inherited
+    public final DateTimePath<java.time.LocalDateTime> updatedAt = _super.updatedAt;
 
     public QCharacterBlueprint(String variable) {
         this(CharacterBlueprint.class, forVariable(variable), INITS);
@@ -58,7 +66,7 @@ public class QCharacterBlueprint extends EntityPathBase<CharacterBlueprint> {
 
     public QCharacterBlueprint(Class<? extends CharacterBlueprint> type, PathMetadata metadata, PathInits inits) {
         super(type, metadata, inits);
-        this.character = inits.isInitialized("character") ? new spammy.eve.domain.character.QCharacter(forProperty("character"), inits.get("character")) : null;
+        this.character = inits.isInitialized("character") ? new QCharacter(forProperty("character"), inits.get("character")) : null;
     }
 
 }

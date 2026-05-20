@@ -1,4 +1,4 @@
-package spammy.eve.domain.blueprint;
+package spammy.eve.sde;
 
 import static com.querydsl.core.types.PathMetadataFactory.*;
 
@@ -16,11 +16,11 @@ import com.querydsl.core.types.dsl.PathInits;
 @Generated("com.querydsl.codegen.DefaultEntitySerializer")
 public class QBlueprint extends EntityPathBase<Blueprint> {
 
-    private static final long serialVersionUID = -2142159007L;
+    private static final long serialVersionUID = -1278689370L;
 
     public static final QBlueprint blueprint = new QBlueprint("blueprint");
 
-    public final EnumPath<spammy.eve.domain.industry.ActivityType> activityType = createEnum("activityType", spammy.eve.domain.industry.ActivityType.class);
+    public final EnumPath<spammy.eve.portfolio.domain.ActivityType> activityType = createEnum("activityType", spammy.eve.portfolio.domain.ActivityType.class);
 
     public final NumberPath<Long> blueprintTypeId = createNumber("blueprintTypeId", Long.class);
 

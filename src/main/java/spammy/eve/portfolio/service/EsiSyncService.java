@@ -37,6 +37,7 @@ public class EsiSyncService {
     private final MarketOrderRepository marketOrderRepository;
     private final AssetRepository assetRepository;
     private final LoyaltyPointRepository loyaltyPointRepository;
+    private final LoyaltyPointHistoryRepository loyaltyPointHistoryRepository;
     private final StandingRepository standingRepository;
     private final MarketPriceRepository marketPriceRepository;
     private final CharacterRepository characterRepository;
@@ -306,7 +307,7 @@ public class EsiSyncService {
                                 getString(node, "status"),
                                 parseInstant(node, "completed_date"),
                                 getInt(node, "successful_runs")),
-                        () -> batch.add(spammy.eve.portfolio.domain.IndustryJob.builder()
+                        () -> batch.add(IndustryJob.builder()
                                 .jobId(jobId)
                                 .character(character)
                                 .activityId(getInt(node, "activity_id"))
@@ -444,7 +445,9 @@ public class EsiSyncService {
         EsiResponse loyaltyPointsResponse = esiClient.get("/characters/" + character.getCharacterId() + "/loyalty/points/", token, null);
         if(!loyaltyPointsResponse.isModified()) return;
 
-        List<LoyaltyPoint> batch = new ArrayList<>();
+        List<LoyaltyPoint> lpToSave = new ArrayList<>();
+        List<LoyaltyPointHistory> historyToSave = new ArrayList<>();
+
         for (JsonNode node : loyaltyPointsResponse.getBody()) {
             Long corporationId = getLong(node, "corporation_id");
             Integer points = getInt(node, "loyalty_points");
@@ -453,16 +456,38 @@ public class EsiSyncService {
             loyaltyPointRepository
                     .findByCharacterCharacterIdAndCorporationId(character.getCharacterId(), corporationId)
                     .ifPresentOrElse(
-                            existing -> existing.update(points),
-                            () -> batch.add(LoyaltyPoint.builder()
-                                    .character(character)
-                                    .corporationId(corporationId)
-                                    .loyaltyPoints(points)
-                                    .build())
+                            existing -> {
+                                if (!existing.getLoyaltyPoints().equals(points)) {
+                                    existing.update(points);
+                                    lpToSave.add(existing);
+                                    historyToSave.add(LoyaltyPointHistory.builder()
+                                            .character(character)
+                                            .corporationId(corporationId)
+                                            .loyaltyPoints(points)
+                                            .build());
+                                }
+                            },
+                            () -> {
+                                lpToSave.add(LoyaltyPoint.builder()
+                                        .character(character)
+                                        .corporationId(corporationId)
+                                        .loyaltyPoints(points)
+                                        .build());
+                                historyToSave.add(LoyaltyPointHistory.builder()
+                                        .character(character)
+                                        .corporationId(corporationId)
+                                        .loyaltyPoints(points)
+                                        .build());
+                            }
                     );
-
         }
-        loyaltyPointRepository.saveAll(batch);
+
+        if (!lpToSave.isEmpty()) {
+            loyaltyPointRepository.saveAll(lpToSave);
+        }
+        if (!historyToSave.isEmpty()) {
+            loyaltyPointHistoryRepository.saveAll(historyToSave);
+        }
         log.info("LoyaltyPoint 동기화 완료");
     }
 

@@ -19,7 +19,6 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class CharacterService {
 
-    private final EsiClient esiClient;
     private final CharacterRepository characterRepository;
     private final AssetRepository assetRepository;
     private final WalletJournalRepository walletJournalRepository;
@@ -89,6 +88,8 @@ public class CharacterService {
             try {
                 // 미션 정보는 주로 저널에서 추출하므로 저널 동기화 수행
                 esiSyncService.syncWalletJournal(character);
+                esiSyncService.syncLoyaltyPoints(character);
+                esiSyncService.syncStandings(character);
                 character.updateLastSyncedAt();
                 characterRepository.save(character);
             } catch (Exception e) {

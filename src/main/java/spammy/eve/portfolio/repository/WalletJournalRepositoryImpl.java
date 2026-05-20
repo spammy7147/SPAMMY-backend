@@ -9,16 +9,20 @@ import spammy.eve.portfolio.dto.JournalQueryDto;
 import spammy.eve.portfolio.response.JournalResponse;
 import spammy.eve.portfolio.response.MissionResponse;
 
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.stream.Collectors;
 
+import spammy.eve.portfolio.domain.LoyaltyPointHistory;
 import spammy.eve.portfolio.domain.User;
 
 @RequiredArgsConstructor
 public class WalletJournalRepositoryImpl implements WalletJournalRepositoryCustom {
 
     private final JPAQueryFactory queryFactory;
+    private final LoyaltyPointHistoryRepository loyaltyPointHistoryRepository;
 
     @Override
     public JournalResponse getJournal(User user) {
@@ -98,54 +102,88 @@ public class WalletJournalRepositoryImpl implements WalletJournalRepositoryCusto
                 .orderBy(journal.date.desc())
                 .fetch();
 
-        double totalIsk = 0;
-        int totalUniqueCount = 0;
-        Set<String> processedEvents = new HashSet<>();
-        Map<String, MissionResponse.DailyMissionRecord> dailyMap = new LinkedHashMap<>();
+        double totalIsk = results.stream()
+                .mapToDouble(dto -> dto.getAmount() != null ? dto.getAmount() : 0.0)
+                .sum();
 
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
-        for (JournalQueryDto dto : results) {
-            double amount = dto.getAmount() != null ? dto.getAmount() : 0.0;
-            totalIsk += amount;
+        // 1. LP 이력 가져오기 및 날짜별 델타 집계
+        List<LoyaltyPointHistory> lpHistory = loyaltyPointHistoryRepository.findByCharacterUserIdOrderByCreatedAtAsc(user.getId());
+        
+        Map<String, List<LoyaltyPointHistory>> lpGroupByCorp = lpHistory.stream()
+                .collect(Collectors.groupingBy(
+                        h -> h.getCharacter().getCharacterId() + "_" + h.getCorporationId()
+                ));
 
-            String dateStr = dto.getDate().format(formatter);
-            
-            // 고유 사건 키: 에이전트ID_초단위타임스탬프
-            String eventKey = dto.getFirstPartyId() + "_" + dto.getDate().toEpochSecond();
-            int countIncrement = 0;
-            
-            if (processedEvents.add(eventKey)) {
-                countIncrement = 1;
-                totalUniqueCount++;
+        Map<String, Integer> lpDeltasByDate = new HashMap<>();
+        int totalLpChange = 0;
+        LocalDateTime thirtyDaysAgoLocal = thirtyDaysAgo.toLocalDateTime();
+
+        for (List<LoyaltyPointHistory> historyList : lpGroupByCorp.values()) {
+            for (int i = 1; i < historyList.size(); i++) {
+                LoyaltyPointHistory prev = historyList.get(i - 1);
+                LoyaltyPointHistory curr = historyList.get(i);
+
+                int delta = curr.getLoyaltyPoints() - prev.getLoyaltyPoints();
+                if (delta == 0) continue;
+
+                if (curr.getCreatedAt().isAfter(thirtyDaysAgoLocal)) {
+                    String dateStr = curr.getCreatedAt().format(formatter);
+                    lpDeltasByDate.put(dateStr, lpDeltasByDate.getOrDefault(dateStr, 0) + delta);
+                    totalLpChange += delta;
+                }
             }
-
-            MissionResponse.DailyMissionRecord record = dailyMap.computeIfAbsent(dateStr, 
-                k -> MissionResponse.DailyMissionRecord.builder()
-                        .date(k)
-                        .count(0)
-                        .iskIncome(0.0)
-                        .lpEarned(0)
-                        .totalIncome(0.0)
-                        .build());
-            
-            dailyMap.put(dateStr, MissionResponse.DailyMissionRecord.builder()
-                    .date(dateStr)
-                    .count(record.getCount() + countIncrement)
-                    .iskIncome(record.getIskIncome() + amount)
-                    .lpEarned(0) // LP 정보는 현재 없으므로 0
-                    .totalIncome(record.getTotalIncome() + amount)
-                    .build());
         }
+        /// lp 이력가져오기 끝
+
+        Map<String, List<JournalQueryDto>> groupedByDate = results.stream()
+                .collect(Collectors.groupingBy(
+                        dto -> dto.getDate().format(formatter),
+                        LinkedHashMap::new,
+                        Collectors.toList()
+                ));
+
+        List<MissionResponse.DailyMissionRecord> dailyRecords = groupedByDate.entrySet().stream()
+                .map(entry -> {
+                    String dateStr = entry.getKey();
+                    List<JournalQueryDto> dayDtos = entry.getValue();
+
+                    double dayIsk = dayDtos.stream()
+                            .mapToDouble(dto -> dto.getAmount() != null ? dto.getAmount() : 0.0)
+                            .sum();
+
+                    long dayCount = dayDtos.stream()
+                            .filter(dto -> "agent_mission_reward".equals(dto.getRefType()))
+                            .map(dto -> dto.getFirstPartyId() + "_" + dto.getRefType() + "_" + dto.getAmount())
+                            .distinct()
+                            .count();
+
+                    int lpEarned = lpDeltasByDate.getOrDefault(dateStr, 0);
+                    double lpIskValue = lpEarned * 1000.0;
+
+                    return MissionResponse.DailyMissionRecord.builder()
+                            .date(dateStr)
+                            .count((int) dayCount)
+                            .iskIncome(dayIsk)
+                            .lpEarned(lpEarned)
+                            .totalIncome(dayIsk + lpIskValue)
+                            .build();
+                })
+                .collect(Collectors.toList());
+
+        int totalUniqueCount = dailyRecords.stream()
+                .mapToInt(MissionResponse.DailyMissionRecord::getCount)
+                .sum();
 
         return MissionResponse.builder()
                 .stats(MissionResponse.MissionStats.builder()
                         .totalCount(totalUniqueCount)
                         .totalIsk(totalIsk)
-                        .totalLp(0)
-                        .totalLpValue(0.0)
+                        .totalLp(totalLpChange)
+                        .totalLpValue(totalLpChange * 1000.0)
                         .build())
-                .dailyRecords(new ArrayList<>(dailyMap.values()))
+                .dailyRecords(dailyRecords)
                 .build();
     }
 

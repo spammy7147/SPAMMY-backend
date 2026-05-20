@@ -1,4 +1,4 @@
-package spammy.eve.domain.sde;
+package spammy.eve.sde;
 
 import static com.querydsl.core.types.PathMetadataFactory.*;
 
@@ -16,7 +16,7 @@ import com.querydsl.core.types.dsl.PathInits;
 @Generated("com.querydsl.codegen.DefaultEntitySerializer")
 public class QGroup extends EntityPathBase<Group> {
 
-    private static final long serialVersionUID = -1570246162L;
+    private static final long serialVersionUID = -1633055470L;
 
     private static final PathInits INITS = PathInits.DIRECT2;
 

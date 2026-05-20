@@ -1,4 +1,4 @@
-package spammy.eve.domain;
+package spammy.eve.portfolio.domain;
 
 import static com.querydsl.core.types.PathMetadataFactory.*;
 
@@ -16,23 +16,28 @@ import com.querydsl.core.types.dsl.PathInits;
 @Generated("com.querydsl.codegen.DefaultEntitySerializer")
 public class QWalletJournal extends EntityPathBase<WalletJournal> {
 
-    private static final long serialVersionUID = -142502361L;
+    private static final long serialVersionUID = 842200909L;
 
     private static final PathInits INITS = PathInits.DIRECT2;
 
     public static final QWalletJournal walletJournal = new QWalletJournal("walletJournal");
 
+    public final spammy.eve.global.domain.QBaseEntity _super = new spammy.eve.global.domain.QBaseEntity(this);
+
     public final NumberPath<Double> amount = createNumber("amount", Double.class);
 
     public final NumberPath<Double> balance = createNumber("balance", Double.class);
 
-    public final spammy.eve.domain.character.QCharacter character;
+    public final QCharacter character;
 
     public final NumberPath<Long> contextId = createNumber("contextId", Long.class);
 
     public final StringPath contextIdType = createString("contextIdType");
 
-    public final DateTimePath<java.time.Instant> date = createDateTime("date", java.time.Instant.class);
+    //inherited
+    public final DateTimePath<java.time.LocalDateTime> createdAt = _super.createdAt;
+
+    public final DateTimePath<java.time.OffsetDateTime> date = createDateTime("date", java.time.OffsetDateTime.class);
 
     public final StringPath description = createString("description");
 
@@ -47,6 +52,9 @@ public class QWalletJournal extends EntityPathBase<WalletJournal> {
     public final NumberPath<Double> tax = createNumber("tax", Double.class);
 
     public final NumberPath<Long> taxReceiverId = createNumber("taxReceiverId", Long.class);
+
+    //inherited
+    public final DateTimePath<java.time.LocalDateTime> updatedAt = _super.updatedAt;
 
     public QWalletJournal(String variable) {
         this(WalletJournal.class, forVariable(variable), INITS);
@@ -66,7 +74,7 @@ public class QWalletJournal extends EntityPathBase<WalletJournal> {
 
     public QWalletJournal(Class<? extends WalletJournal> type, PathMetadata metadata, PathInits inits) {
         super(type, metadata, inits);
-        this.character = inits.isInitialized("character") ? new spammy.eve.domain.character.QCharacter(forProperty("character"), inits.get("character")) : null;
+        this.character = inits.isInitialized("character") ? new QCharacter(forProperty("character"), inits.get("character")) : null;
     }
 
 }

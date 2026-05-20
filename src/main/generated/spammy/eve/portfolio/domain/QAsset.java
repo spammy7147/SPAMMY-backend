@@ -1,4 +1,4 @@
-package spammy.eve.domain;
+package spammy.eve.portfolio.domain;
 
 import static com.querydsl.core.types.PathMetadataFactory.*;
 
@@ -16,13 +16,18 @@ import com.querydsl.core.types.dsl.PathInits;
 @Generated("com.querydsl.codegen.DefaultEntitySerializer")
 public class QAsset extends EntityPathBase<Asset> {
 
-    private static final long serialVersionUID = 1505394969L;
+    private static final long serialVersionUID = -1592104897L;
 
     private static final PathInits INITS = PathInits.DIRECT2;
 
     public static final QAsset asset = new QAsset("asset");
 
-    public final spammy.eve.domain.character.QCharacter character;
+    public final spammy.eve.global.domain.QBaseEntity _super = new spammy.eve.global.domain.QBaseEntity(this);
+
+    public final QCharacter character;
+
+    //inherited
+    public final DateTimePath<java.time.LocalDateTime> createdAt = _super.createdAt;
 
     public final BooleanPath isBlueprintCopy = createBoolean("isBlueprintCopy");
 
@@ -39,6 +44,9 @@ public class QAsset extends EntityPathBase<Asset> {
     public final NumberPath<Integer> quantity = createNumber("quantity", Integer.class);
 
     public final NumberPath<Long> typeId = createNumber("typeId", Long.class);
+
+    //inherited
+    public final DateTimePath<java.time.LocalDateTime> updatedAt = _super.updatedAt;
 
     public QAsset(String variable) {
         this(Asset.class, forVariable(variable), INITS);
@@ -58,7 +66,7 @@ public class QAsset extends EntityPathBase<Asset> {
 
     public QAsset(Class<? extends Asset> type, PathMetadata metadata, PathInits inits) {
         super(type, metadata, inits);
-        this.character = inits.isInitialized("character") ? new spammy.eve.domain.character.QCharacter(forProperty("character"), inits.get("character")) : null;
+        this.character = inits.isInitialized("character") ? new QCharacter(forProperty("character"), inits.get("character")) : null;
     }
 
 }

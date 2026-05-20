@@ -1,4 +1,4 @@
-package spammy.eve.domain.market;
+package spammy.eve.portfolio.domain;
 
 import static com.querydsl.core.types.PathMetadataFactory.*;
 
@@ -16,13 +16,20 @@ import com.querydsl.core.types.dsl.PathInits;
 @Generated("com.querydsl.codegen.DefaultEntitySerializer")
 public class QMarketOrder extends EntityPathBase<MarketOrder> {
 
-    private static final long serialVersionUID = -1722648073L;
+    private static final long serialVersionUID = -873902463L;
 
     private static final PathInits INITS = PathInits.DIRECT2;
 
     public static final QMarketOrder marketOrder = new QMarketOrder("marketOrder");
 
-    public final spammy.eve.domain.character.QCharacter character;
+    public final spammy.eve.global.domain.QBaseEntity _super = new spammy.eve.global.domain.QBaseEntity(this);
+
+    public final QCharacter character;
+
+    public final DateTimePath<java.time.Instant> completedAt = createDateTime("completedAt", java.time.Instant.class);
+
+    //inherited
+    public final DateTimePath<java.time.LocalDateTime> createdAt = _super.createdAt;
 
     public final NumberPath<Integer> duration = createNumber("duration", Integer.class);
 
@@ -46,7 +53,12 @@ public class QMarketOrder extends EntityPathBase<MarketOrder> {
 
     public final NumberPath<Long> regionId = createNumber("regionId", Long.class);
 
+    public final StringPath state = createString("state");
+
     public final NumberPath<Long> typeId = createNumber("typeId", Long.class);
+
+    //inherited
+    public final DateTimePath<java.time.LocalDateTime> updatedAt = _super.updatedAt;
 
     public final NumberPath<Integer> volumeRemain = createNumber("volumeRemain", Integer.class);
 
@@ -70,7 +82,7 @@ public class QMarketOrder extends EntityPathBase<MarketOrder> {
 
     public QMarketOrder(Class<? extends MarketOrder> type, PathMetadata metadata, PathInits inits) {
         super(type, metadata, inits);
-        this.character = inits.isInitialized("character") ? new spammy.eve.domain.character.QCharacter(forProperty("character"), inits.get("character")) : null;
+        this.character = inits.isInitialized("character") ? new QCharacter(forProperty("character"), inits.get("character")) : null;
     }
 
 }

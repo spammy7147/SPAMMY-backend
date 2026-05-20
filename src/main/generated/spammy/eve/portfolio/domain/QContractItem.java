@@ -1,4 +1,4 @@
-package spammy.eve.domain.contract;
+package spammy.eve.portfolio.domain;
 
 import static com.querydsl.core.types.PathMetadataFactory.*;
 
@@ -16,13 +16,18 @@ import com.querydsl.core.types.dsl.PathInits;
 @Generated("com.querydsl.codegen.DefaultEntitySerializer")
 public class QContractItem extends EntityPathBase<ContractItem> {
 
-    private static final long serialVersionUID = 775370506L;
+    private static final long serialVersionUID = 1771954966L;
 
     private static final PathInits INITS = PathInits.DIRECT2;
 
     public static final QContractItem contractItem = new QContractItem("contractItem");
 
+    public final spammy.eve.global.domain.QBaseEntity _super = new spammy.eve.global.domain.QBaseEntity(this);
+
     public final QCharacterContract contract;
+
+    //inherited
+    public final DateTimePath<java.time.LocalDateTime> createdAt = _super.createdAt;
 
     public final BooleanPath isIncluded = createBoolean("isIncluded");
 
@@ -35,6 +40,9 @@ public class QContractItem extends EntityPathBase<ContractItem> {
     public final NumberPath<Long> recordId = createNumber("recordId", Long.class);
 
     public final NumberPath<Long> typeId = createNumber("typeId", Long.class);
+
+    //inherited
+    public final DateTimePath<java.time.LocalDateTime> updatedAt = _super.updatedAt;
 
     public QContractItem(String variable) {
         this(ContractItem.class, forVariable(variable), INITS);

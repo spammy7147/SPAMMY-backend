@@ -1,4 +1,4 @@
-package spammy.eve.domain;
+package spammy.eve.portfolio.domain;
 
 import static com.querydsl.core.types.PathMetadataFactory.*;
 
@@ -16,15 +16,20 @@ import com.querydsl.core.types.dsl.PathInits;
 @Generated("com.querydsl.codegen.DefaultEntitySerializer")
 public class QWalletTransaction extends EntityPathBase<WalletTransaction> {
 
-    private static final long serialVersionUID = 336642510L;
+    private static final long serialVersionUID = -415162380L;
 
     private static final PathInits INITS = PathInits.DIRECT2;
 
     public static final QWalletTransaction walletTransaction = new QWalletTransaction("walletTransaction");
 
-    public final spammy.eve.domain.character.QCharacter character;
+    public final spammy.eve.global.domain.QBaseEntity _super = new spammy.eve.global.domain.QBaseEntity(this);
+
+    public final QCharacter character;
 
     public final NumberPath<Long> clientId = createNumber("clientId", Long.class);
+
+    //inherited
+    public final DateTimePath<java.time.LocalDateTime> createdAt = _super.createdAt;
 
     public final DateTimePath<java.time.Instant> date = createDateTime("date", java.time.Instant.class);
 
@@ -44,6 +49,9 @@ public class QWalletTransaction extends EntityPathBase<WalletTransaction> {
 
     public final NumberPath<Double> unitPrice = createNumber("unitPrice", Double.class);
 
+    //inherited
+    public final DateTimePath<java.time.LocalDateTime> updatedAt = _super.updatedAt;
+
     public QWalletTransaction(String variable) {
         this(WalletTransaction.class, forVariable(variable), INITS);
     }
@@ -62,7 +70,7 @@ public class QWalletTransaction extends EntityPathBase<WalletTransaction> {
 
     public QWalletTransaction(Class<? extends WalletTransaction> type, PathMetadata metadata, PathInits inits) {
         super(type, metadata, inits);
-        this.character = inits.isInitialized("character") ? new spammy.eve.domain.character.QCharacter(forProperty("character"), inits.get("character")) : null;
+        this.character = inits.isInitialized("character") ? new QCharacter(forProperty("character"), inits.get("character")) : null;
     }
 
 }

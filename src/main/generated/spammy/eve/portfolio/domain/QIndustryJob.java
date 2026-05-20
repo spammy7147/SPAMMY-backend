@@ -1,4 +1,4 @@
-package spammy.eve.domain;
+package spammy.eve.portfolio.domain;
 
 import static com.querydsl.core.types.PathMetadataFactory.*;
 
@@ -16,11 +16,13 @@ import com.querydsl.core.types.dsl.PathInits;
 @Generated("com.querydsl.codegen.DefaultEntitySerializer")
 public class QIndustryJob extends EntityPathBase<IndustryJob> {
 
-    private static final long serialVersionUID = 467845224L;
+    private static final long serialVersionUID = -1180290290L;
 
     private static final PathInits INITS = PathInits.DIRECT2;
 
     public static final QIndustryJob industryJob = new QIndustryJob("industryJob");
+
+    public final spammy.eve.global.domain.QBaseEntity _super = new spammy.eve.global.domain.QBaseEntity(this);
 
     public final NumberPath<Integer> activityId = createNumber("activityId", Integer.class);
 
@@ -28,13 +30,16 @@ public class QIndustryJob extends EntityPathBase<IndustryJob> {
 
     public final NumberPath<Long> blueprintTypeId = createNumber("blueprintTypeId", Long.class);
 
-    public final spammy.eve.domain.character.QCharacter character;
+    public final QCharacter character;
 
     public final NumberPath<Long> completedCharacterId = createNumber("completedCharacterId", Long.class);
 
     public final DateTimePath<java.time.Instant> completedDate = createDateTime("completedDate", java.time.Instant.class);
 
     public final NumberPath<Double> cost = createNumber("cost", Double.class);
+
+    //inherited
+    public final DateTimePath<java.time.LocalDateTime> createdAt = _super.createdAt;
 
     public final NumberPath<Integer> duration = createNumber("duration", Integer.class);
 
@@ -64,6 +69,9 @@ public class QIndustryJob extends EntityPathBase<IndustryJob> {
 
     public final NumberPath<Integer> successfulRuns = createNumber("successfulRuns", Integer.class);
 
+    //inherited
+    public final DateTimePath<java.time.LocalDateTime> updatedAt = _super.updatedAt;
+
     public QIndustryJob(String variable) {
         this(IndustryJob.class, forVariable(variable), INITS);
     }
@@ -82,7 +90,7 @@ public class QIndustryJob extends EntityPathBase<IndustryJob> {
 
     public QIndustryJob(Class<? extends IndustryJob> type, PathMetadata metadata, PathInits inits) {
         super(type, metadata, inits);
-        this.character = inits.isInitialized("character") ? new spammy.eve.domain.character.QCharacter(forProperty("character"), inits.get("character")) : null;
+        this.character = inits.isInitialized("character") ? new QCharacter(forProperty("character"), inits.get("character")) : null;
     }
 
 }

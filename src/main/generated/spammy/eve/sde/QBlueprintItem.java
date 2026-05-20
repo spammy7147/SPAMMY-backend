@@ -1,4 +1,4 @@
-package spammy.eve.domain.blueprint;
+package spammy.eve.sde;
 
 import static com.querydsl.core.types.PathMetadataFactory.*;
 
@@ -16,7 +16,7 @@ import com.querydsl.core.types.dsl.PathInits;
 @Generated("com.querydsl.codegen.DefaultEntitySerializer")
 public class QBlueprintItem extends EntityPathBase<BlueprintItem> {
 
-    private static final long serialVersionUID = 1830000148L;
+    private static final long serialVersionUID = 479685593L;
 
     private static final PathInits INITS = PathInits.DIRECT2;
 
@@ -34,7 +34,7 @@ public class QBlueprintItem extends EntityPathBase<BlueprintItem> {
 
     public final NumberPath<Long> qty = createNumber("qty", Long.class);
 
-    public final spammy.eve.domain.sde.QType type;
+    public final QType type;
 
     public QBlueprintItem(String variable) {
         this(BlueprintItem.class, forVariable(variable), INITS);
@@ -55,7 +55,7 @@ public class QBlueprintItem extends EntityPathBase<BlueprintItem> {
     public QBlueprintItem(Class<? extends BlueprintItem> type, PathMetadata metadata, PathInits inits) {
         super(type, metadata, inits);
         this.blueprint = inits.isInitialized("blueprint") ? new QBlueprint(forProperty("blueprint")) : null;
-        this.type = inits.isInitialized("type") ? new spammy.eve.domain.sde.QType(forProperty("type"), inits.get("type")) : null;
+        this.type = inits.isInitialized("type") ? new QType(forProperty("type"), inits.get("type")) : null;
     }
 
 }
