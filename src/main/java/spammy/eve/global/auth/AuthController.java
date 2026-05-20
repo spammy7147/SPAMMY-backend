@@ -11,10 +11,10 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import spammy.eve.character.domain.Character;
-import spammy.eve.character.domain.User;
-import spammy.eve.character.repository.CharacterRepository;
-import spammy.eve.character.repository.UserRepository;
+import spammy.eve.portfolio.domain.Character;
+import spammy.eve.portfolio.domain.User;
+import spammy.eve.portfolio.repository.CharacterRepository;
+import spammy.eve.portfolio.repository.UserRepository;
 
 @Slf4j
 @RestController

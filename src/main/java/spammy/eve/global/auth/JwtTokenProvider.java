@@ -10,8 +10,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Component;
-import spammy.eve.character.domain.User;
-import spammy.eve.character.repository.UserRepository;
+import spammy.eve.portfolio.repository.UserRepository;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;

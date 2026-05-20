@@ -14,8 +14,8 @@ import org.springframework.security.oauth2.core.OAuth2AccessToken;
 import org.springframework.security.oauth2.core.OAuth2RefreshToken;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
-import spammy.eve.character.domain.Character;
-import spammy.eve.character.repository.CharacterRepository;
+import spammy.eve.portfolio.domain.Character;
+import spammy.eve.portfolio.repository.CharacterRepository;
 
 import java.io.IOException;
 import java.time.LocalDateTime;

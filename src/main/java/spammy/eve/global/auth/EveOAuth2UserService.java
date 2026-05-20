@@ -12,10 +12,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
-import spammy.eve.character.domain.Character;
-import spammy.eve.character.repository.CharacterRepository;
-import spammy.eve.character.domain.User;
-import spammy.eve.character.repository.UserRepository;
+import spammy.eve.portfolio.domain.Character;
+import spammy.eve.portfolio.repository.CharacterRepository;
+import spammy.eve.portfolio.domain.User;
+import spammy.eve.portfolio.repository.UserRepository;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;

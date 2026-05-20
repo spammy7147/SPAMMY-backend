@@ -37,10 +37,12 @@ public class JwtFilter extends OncePerRequestFilter {
             } else {
                 log.warn("토큰은 유효하나 사용자를 찾을 수 없습니다. 쿠키를 삭제합니다.");
                 deleteAuthCookie(response);
+                SecurityContextHolder.clearContext();
             }
         } else {
             log.warn("유효하지 않은 토큰이 감지되었습니다. 쿠키를 삭제합니다.");
             deleteAuthCookie(response);
+            SecurityContextHolder.clearContext();
         }
 
         filterChain.doFilter(request, response);

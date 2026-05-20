@@ -10,8 +10,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClient;
-import spammy.eve.character.domain.Character;
-import spammy.eve.character.repository.CharacterRepository;
+import spammy.eve.portfolio.domain.Character;
+import spammy.eve.portfolio.repository.CharacterRepository;
 import tools.jackson.databind.JsonNode;
 
 import java.time.LocalDateTime;
